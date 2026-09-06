@@ -28,7 +28,7 @@ interface Part {
   minWeight: string;
   maxWeight: string;
   quantity: number;
-  maxBagWeight: string;
+  actualWeight: string;
 }
 
 type Status = "OK" | "UNDERWEIGHT" | "OVERWEIGHT" | "PENDING";
@@ -61,7 +61,7 @@ function evaluateWeight(
       message: "Scan or select a part to begin",
     };
   const min = parseFloat(part.minWeight) * part.quantity;
-  const max = parseFloat(part.maxBagWeight);
+  const max = parseFloat(part.maxWeight) * part.quantity;
   if (actual < min)
     return {
       status: "UNDERWEIGHT",

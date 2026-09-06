@@ -31,7 +31,7 @@ interface Part {
   minWeight: string;
   maxWeight: string;
   quantity: number;
-  maxBagWeight: string;
+  actualWeight: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,7 +42,7 @@ interface FormData {
   minWeight: string;
   maxWeight: string;
   quantity: string;
-  maxBagWeight: string;
+  actualWeight: string;
 }
 
 const EMPTY_FORM: FormData = {
@@ -51,7 +51,7 @@ const EMPTY_FORM: FormData = {
   minWeight: "",
   maxWeight: "",
   quantity: "",
-  maxBagWeight: "",
+  actualWeight: "",
 };
 
 function Modal({
@@ -143,17 +143,19 @@ function PartDetailModal({
 }) {
   const minW = parseFloat(part.minWeight);
   const maxW = parseFloat(part.maxWeight);
-  const bagW = parseFloat(part.maxBagWeight);
+  const actW = parseFloat(part.actualWeight);
   const expMinBag = minW * part.quantity;
+  const actBag = actW * part.quantity;
   const expMaxBag = maxW * part.quantity;
 
   const specs: { label: string; value: string; tone?: "default" | "amber" | "red" | "blue" }[] = [
     { label: "Min Item Weight", value: `${minW.toFixed(3)} kg` },
+    { label: "Actual Item Weight", value: `${actW.toFixed(3)} kg` },
     { label: "Max Item Weight", value: `${maxW.toFixed(3)} kg` },
     { label: "Quantity per Bag", value: `${part.quantity} pcs`, tone: "blue" },
     { label: "Expected Min Bag", value: `${expMinBag.toFixed(3)} kg`, tone: "amber" },
-    { label: "Expected Max Bag", value: `${expMaxBag.toFixed(3)} kg`, tone: "amber" },
-    { label: "Max Bag (Cap)", value: `${bagW.toFixed(3)} kg`, tone: "red" },
+    { label: "Actual Bag Weight", value: `${actBag.toFixed(3)} kg`, tone: "amber" },
+    { label: "Max Bag Weight", value: `${expMaxBag.toFixed(3)} kg`, tone: "red" },
   ];
 
   const toneCls: Record<string, string> = {
@@ -289,7 +291,7 @@ export default function MasterPage() {
       minWeight: part.minWeight,
       maxWeight: part.maxWeight,
       quantity: part.quantity.toString(),
-      maxBagWeight: part.maxBagWeight,
+      actualWeight: part.actualWeight,
     });
     setError("");
     setShowForm(true);
@@ -297,6 +299,13 @@ export default function MasterPage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function computeBagWeight(weight: string, qty: string): string {
+    const w = parseFloat(weight);
+    const q = parseInt(qty);
+    if (!Number.isFinite(w) || !Number.isFinite(q) || q < 0) return "0.000";
+    return (w * q).toFixed(3);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -590,7 +599,7 @@ export default function MasterPage() {
                       {part.quantity}
                     </td>
                     <td className="px-5 py-3.5 text-right font-medium text-amber-600">
-                      {parseFloat(part.maxBagWeight).toFixed(3)}
+                      {(parseFloat(part.maxWeight) * part.quantity).toFixed(3)}
                     </td>
                     <td className="px-5 py-3.5">
                       <div
@@ -701,15 +710,50 @@ export default function MasterPage() {
                 required
               />
               <FormField
-                label="Max Bag Weight (kg)"
-                name="maxBagWeight"
+                label="Actual weight (kg)"
+                name="actualWeight"
                 type="number"
                 step="0.001"
-                value={formData.maxBagWeight}
+                value={formData.actualWeight}
                 onChange={handleChange}
                 placeholder="0.000"
                 required
               />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Expected box weight <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={computeBagWeight(formData.minWeight, formData.quantity)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Actual box weight <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={computeBagWeight(formData.actualWeight, formData.quantity)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Maximum box weight <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={computeBagWeight(formData.maxWeight, formData.quantity)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-600"
+                />
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <button

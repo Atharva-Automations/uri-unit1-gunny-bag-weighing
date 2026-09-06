@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { partNumber, description, minWeight, maxWeight, quantity, maxBagWeight } =
+    const { partNumber, description, minWeight, maxWeight, quantity, actualWeight } =
       body;
 
     if (
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       minWeight === undefined ||
       maxWeight === undefined ||
       quantity === undefined ||
-      maxBagWeight === undefined
+      actualWeight === undefined
     ) {
       return NextResponse.json(
         { success: false, error: "All fields are required" },
@@ -59,9 +59,9 @@ export async function POST(request: NextRequest) {
     const minW = parseFloat(minWeight);
     const maxW = parseFloat(maxWeight);
     const qty = parseInt(quantity);
-    const bagW = parseFloat(maxBagWeight);
+    const actW = parseFloat(actualWeight);
 
-    if (!Number.isFinite(minW) || !Number.isFinite(maxW) || !Number.isFinite(bagW)) {
+    if (!Number.isFinite(minW) || !Number.isFinite(maxW) || !Number.isFinite(actW)) {
       return NextResponse.json(
         { success: false, error: "Weights must be valid numbers" },
         { status: 400 }
@@ -82,15 +82,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (bagW < minW * qty) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Max bag weight (${bagW}kg) must be at least min × qty (${(minW * qty).toFixed(3)}kg)`,
-        },
-        { status: 400 }
-      );
-    }
 
     const [newPart] = await db
       .insert(parts)
@@ -100,7 +91,7 @@ export async function POST(request: NextRequest) {
         minWeight: minW.toFixed(3),
         maxWeight: maxW.toFixed(3),
         quantity: qty,
-        maxBagWeight: bagW.toFixed(3),
+        actualWeight: actW.toFixed(3),
       })
       .returning();
 

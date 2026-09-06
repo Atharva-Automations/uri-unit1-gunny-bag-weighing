@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
           description: part.description,
           minWeight: part.minWeight,
           maxWeight: part.maxWeight,
-          maxBagWeight: part.maxBagWeight,
           quantity: part.quantity,
+          actualWeight: part.actualWeight,
         };
         const tspl = generateGunnyBagTSPL(label);
         await tscPrinterClient.send(printer.ip, printer.port, tspl);
@@ -110,9 +110,9 @@ export async function POST(request: NextRequest) {
       description: part.description,
       minWeight: part.minWeight,
       maxWeight: part.maxWeight,
-      maxBagWeight: part.maxBagWeight,
       quantity: part.quantity,
-      actualWeight,
+      actualWeight: part.actualWeight,
+      recordActualWeight: actualWeight,
       status,
     };
 

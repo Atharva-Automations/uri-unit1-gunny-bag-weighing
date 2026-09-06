@@ -92,13 +92,11 @@ export async function POST(request: NextRequest) {
 
     // Determine status against the part's per-bag expected range.
     // Min expected bag weight = minWeight * quantity (each item must be
-    // at least minWeight). Max allowed bag weight = maxBagWeight (the
-    // hard cap set in the master record, NOT maxWeight*qty — the user
-    // sets maxBagWeight explicitly to clamp gross bag weight including
-    // tolerance).
+    // at least minWeight). Max allowed bag weight = maxWeight * quantity
+    // (computed from the per-item max, no separate cap stored).
     const qty = parseInt(quantity);
     const minW = parseFloat(part.minWeight.toString()) * qty;
-    const maxW = parseFloat(part.maxBagWeight.toString());
+    const maxW = parseFloat(part.maxWeight.toString()) * qty;
     const actual = parseFloat(actualWeight);
 
     let status = "OK";

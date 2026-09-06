@@ -16,7 +16,7 @@ export const parts = pgTable("parts", {
   minWeight: numeric("min_weight", { precision: 10, scale: 3 }).notNull(),
   maxWeight: numeric("max_weight", { precision: 10, scale: 3 }).notNull(),
   quantity: integer("quantity").notNull(),
-  maxBagWeight: numeric("max_bag_weight", { precision: 10, scale: 3 }).notNull(),
+  actualWeight: numeric("actual_weight", { precision: 10, scale: 3 }).notNull().default("0"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

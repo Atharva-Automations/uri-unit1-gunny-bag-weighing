@@ -17,9 +17,9 @@ export interface LabelPayload {
   description: string;
   minWeight: string;
   maxWeight: string;
-  maxBagWeight: string;
   quantity: number;
-  actualWeight?: string | null;
+  actualWeight: string;
+  recordActualWeight?: string | null;
   status?: string | null;
   recordedAt?: string | null;
   operatorName?: string | null;
@@ -128,7 +128,10 @@ export async function writeLabelPDF(payload: LabelPayload): Promise<Buffer> {
     "Min–Max",
     `${parseFloat(payload.minWeight).toFixed(3)} - ${parseFloat(payload.maxWeight).toFixed(3)} kg`
   );
-  row("Max Bag", `${parseFloat(payload.maxBagWeight).toFixed(3)} kg`);
+  row(
+    "Max Bag",
+    `${(parseFloat(payload.maxWeight) * payload.quantity).toFixed(3)} kg`
+  );
 
   if (payload.recordedAt) {
     const d = new Date(payload.recordedAt);
@@ -137,11 +140,11 @@ export async function writeLabelPDF(payload: LabelPayload): Promise<Buffer> {
     row("Date", new Date().toISOString().slice(0, 10));
   }
 
-  if (payload.actualWeight) {
+  if (payload.recordActualWeight) {
     y += 4;
     row(
       "Actual",
-      `${parseFloat(payload.actualWeight).toFixed(3)} kg`,
+      `${parseFloat(payload.recordActualWeight).toFixed(3)} kg`,
       { bold: true, size: 11, color: "#0f172a" }
     );
   }
@@ -301,7 +304,7 @@ export async function writeRecordPDF(payload: RecordPayload): Promise<Buffer> {
   );
   row(
     "Max Bag Weight",
-    `${parseFloat(payload.maxBagWeight).toFixed(3)} kg`,
+    `${(parseFloat(payload.maxWeight) * payload.quantity).toFixed(3)} kg`,
     { bold: true }
   );
   row("Quantity / Bag", `${payload.quantity} pcs`);
@@ -324,10 +327,10 @@ export async function writeRecordPDF(payload: RecordPayload): Promise<Buffer> {
   );
   row("Operator", payload.operatorName ?? "—");
   row("Remarks", payload.remarks ?? "—");
-  if (payload.actualWeight) {
+  if (payload.recordActualWeight) {
     row(
       "Actual Weight",
-      `${parseFloat(payload.actualWeight).toFixed(3)} kg`,
+      `${parseFloat(payload.recordActualWeight).toFixed(3)} kg`,
       { bold: true, size: 13 }
     );
   }

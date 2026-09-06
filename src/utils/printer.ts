@@ -47,10 +47,10 @@ export interface GunnyBagLabelData {
   description: string;
   minWeight: string;
   maxWeight: string;
-  maxBagWeight: string;
   quantity: number;
+  actualWeight: string;
   /** Optional — actual measured weight printed if a weighing was recorded. */
-  actualWeight?: string | null;
+  recordActualWeight?: string | null;
   /** Optional — OK | OVERWEIGHT | UNDERWEIGHT */
   status?: string | null;
 }
@@ -87,10 +87,10 @@ export function generateGunnyBagTSPL(data: GunnyBagLabelData): string {
 
   const min = parseFloat(data.minWeight).toFixed(3);
   const max = parseFloat(data.maxWeight).toFixed(3);
-  const bag = parseFloat(data.maxBagWeight).toFixed(3);
+  const bag = (parseFloat(data.maxWeight) * data.quantity).toFixed(3);
   const actual =
-    data.actualWeight !== undefined && data.actualWeight !== null
-      ? parseFloat(data.actualWeight).toFixed(3)
+    data.recordActualWeight !== undefined && data.recordActualWeight !== null
+      ? parseFloat(data.recordActualWeight).toFixed(3)
       : null;
   const status = data.status ?? null;
 

@@ -53,7 +53,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { partNumber, description, minWeight, maxWeight, quantity, maxBagWeight } =
+    const { partNumber, description, minWeight, maxWeight, quantity, actualWeight } =
       body;
 
     if (parseFloat(minWeight) >= parseFloat(maxWeight)) {
@@ -74,7 +74,7 @@ export async function PUT(
         minWeight: minWeight.toString(),
         maxWeight: maxWeight.toString(),
         quantity: parseInt(quantity),
-        maxBagWeight: maxBagWeight.toString(),
+        actualWeight: actualWeight.toString(),
         updatedAt: new Date(),
       })
       .where(eq(parts.id, partId))

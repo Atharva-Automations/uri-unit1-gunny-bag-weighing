@@ -49,7 +49,7 @@ async function pushSchemaRaw(pool: Pool) {
         min_weight NUMERIC(10, 3) NOT NULL,
         max_weight NUMERIC(10, 3) NOT NULL,
         quantity INTEGER NOT NULL,
-        max_bag_weight NUMERIC(10, 3) NOT NULL,
+        actual_weight NUMERIC(10, 3) NOT NULL DEFAULT '0',
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
@@ -71,6 +71,31 @@ async function pushSchemaRaw(pool: Pool) {
         ON weighing_history(part_id);
       CREATE INDEX IF NOT EXISTS idx_weighing_history_recorded_at
         ON weighing_history(recorded_at);
+    `);
+
+    // Migrate existing parts table: replace max_bag_weight with actual_weight
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'parts' AND column_name = 'max_bag_weight'
+        ) THEN
+          ALTER TABLE parts DROP COLUMN max_bag_weight;
+        END IF;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'parts' AND column_name = 'actual_weight'
+        ) THEN
+          ALTER TABLE parts ADD COLUMN actual_weight NUMERIC(10, 3) NOT NULL DEFAULT '0';
+        END IF;
+      END $$;
     `);
 
     // Convert existing naive timestamp columns to TIMESTAMP WITH TIME ZONE.
