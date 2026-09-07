@@ -47,7 +47,9 @@ export async function GET(
       status: rec.status,
       operatorName: rec.operatorName,
       remarks: rec.remarks,
-      recordedAt: rec.recordedAt,
+      recordedAt: rec.recordedAt instanceof Date
+        ? rec.recordedAt.toISOString()
+        : String(rec.recordedAt ?? ""),
     });
 
     return new NextResponse(new Uint8Array(buffer), {

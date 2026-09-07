@@ -64,7 +64,6 @@ export function buildLabel(data: LabelData) {
 
   const rows: string[] = [
     `Part No.    : ${cleanLabelText(data.partNumber || "")}`,
-    `Desc        : ${desc}`,
     `Qty/Bag     : ${data.quantity || 0} pcs`,
     `Min-Max     : ${min} - ${max} kg`,
     `Expected Bag: ${bag} - ${bagMax} kg`,

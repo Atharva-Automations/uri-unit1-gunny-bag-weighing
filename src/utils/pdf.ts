@@ -207,7 +207,7 @@ export interface RecordPayload extends LabelPayload {
  * a small QR for re-scanning.
  */
 export async function writeRecordPDF(payload: RecordPayload): Promise<Buffer> {
-  const doc = new PDFDocument({ size: "A4", margins: 50 });
+  const doc = new PDFDocument({ size: "A4", margins: { top: 50, right: 50, bottom: 50, left: 50 } });
 
   const pageW = doc.page.width;
 

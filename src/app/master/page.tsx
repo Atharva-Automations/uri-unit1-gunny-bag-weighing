@@ -254,42 +254,6 @@ export default function MasterPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [batchPrinting, setBatchPrinting] = useState(false);
   const [calibrating, setCalibrating] = useState(false);
-  const [liveWeight, setLiveWeight] = useState<number | null>(null);
-
-  // Poll the scale while the Add/Edit form is open so the Actual Weight
-  // field always reflects the live reading from the weighing machine.
-  useEffect(() => {
-    if (!showForm) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await fetch("/api/scale");
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (!cancelled && data.success && data.data?.weight > 0) {
-          setLiveWeight(data.data.weight);
-        }
-      } catch {
-        // network glitch; keep polling
-      }
-    };
-    tick();
-    const t = setInterval(tick, 500);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [showForm]);
-
-  // Keep the form's actualWeight synced with the live scale reading.
-  useEffect(() => {
-    if (showForm && liveWeight !== null) {
-      setFormData((prev) => ({
-        ...prev,
-        actualWeight: liveWeight.toFixed(3),
-      }));
-    }
-  }, [liveWeight, showForm]);
 
   const fetchParts = useCallback(async (q = "") => {
     setLoading(true);
@@ -315,7 +279,6 @@ export default function MasterPage() {
   function openCreate() {
     setEditingPart(null);
     setFormData(EMPTY_FORM);
-    setLiveWeight(null);
     setError("");
     setShowForm(true);
   }
@@ -331,7 +294,6 @@ export default function MasterPage() {
       actualWeight: part.actualWeight,
     });
     setError("");
-    setLiveWeight(null);
     setShowForm(true);
   }
 
@@ -761,49 +723,16 @@ export default function MasterPage() {
                   placeholder="e.g. 100"
                   required
                 />
-                {/* Actual weight — read-only, auto-filled from the scale */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Actual Weight (kg) <span className="text-red-500">*</span>
-                  </label>
-                  <div
-                    className={`w-full flex items-center gap-2 px-3 py-2.5 border rounded-lg text-sm ${
-                      liveWeight !== null
-                        ? "border-emerald-300 bg-emerald-50"
-                        : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <Scale
-                      className={`w-4 h-4 flex-shrink-0 ${
-                        liveWeight !== null
-                          ? "text-emerald-600"
-                          : "text-slate-400"
-                      }`}
-                    />
-                    <input
-                      type="number"
-                      step="0.001"
-                      name="actualWeight"
-                      value={formData.actualWeight}
-                      readOnly
-                      tabIndex={-1}
-                      placeholder="Place item on scale…"
-                      className="flex-1 bg-transparent focus:outline-none text-sm font-mono cursor-not-allowed"
-                    />
-                    <span
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-                        liveWeight !== null
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-200 text-slate-500"
-                      }`}
-                    >
-                      {liveWeight !== null ? "LIVE SCALE" : "NO READING"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Read automatically from the weighing machine — not editable.
-                  </p>
-                </div>
+                <FormField
+                  label="Actual Weight (kg)"
+                  name="actualWeight"
+                  type="number"
+                  step="0.001"
+                  value={formData.actualWeight}
+                  onChange={handleChange}
+                  placeholder="0.000"
+                  required
+                />
               </div>
             </div>
 

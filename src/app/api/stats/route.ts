@@ -45,7 +45,7 @@ export async function GET() {
 
     // recordedAt is TIMESTAMP WITH TIME ZONE — format in IST directly.
     const formatIST = (raw: unknown) => {
-      return new Date(raw).toLocaleString("en-IN", {
+      return new Date(raw as string | number | Date).toLocaleString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",

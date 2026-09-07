@@ -172,7 +172,7 @@ async function ensureConnected(): Promise<void> {
   }
 }
 
-async function readOnce(): Promise<{ raw: number; weight: number } | null> {
+async function readOnce(): Promise<{ raw: number | null; weight: number } | null> {
   await ensureConnected();
 
   // Function Code 03 = Read Holding Registers
@@ -190,12 +190,15 @@ async function readOnce(): Promise<{ raw: number; weight: number } | null> {
   }
 
   const raw = registersToValue(result.data);
-  const weight = scaleToWeight(raw);
-  if (weight === null || Number.isNaN(weight)) {
+  const rawWeight = scaleToWeight(raw);
+  if (rawWeight === null) {
     throw new Error(`Invalid reading: raw=${raw}`);
   }
-  acceptReading(raw, weight);
-  return { raw, weight };
+  if (Number.isNaN(rawWeight)) {
+    throw new Error(`Invalid reading: raw=${raw}`);
+  }
+  acceptReading(raw, rawWeight);
+  return { raw, weight: rawWeight };
 }
 
 async function closeClient() {
@@ -303,7 +306,7 @@ export function getScaleStatus(): ScaleStatus {
 }
 
 export async function readOneShot(): Promise<{
-  raw: number;
+  raw: number | null;
   weight: number;
 } | null> {
   try {
