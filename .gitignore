@@ -1,32 +1,6 @@
-# dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# next.js
 .next/
-out/
-build/
-
-# debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+node_modules/
 *.log
-
-# environment
-.env*.local
 .env
-
-# editor
-.vscode/
-.idea/
-*.swp
-.DS_Store
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# misc
-.claude/
+.env.local
+dev.log

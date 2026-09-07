@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import MainLayout from "@/components/MainLayout";
+import { WeightStability, MAX_READING_AGE_MS, WEIGHT_TOLERANCE_KG } from "@/utils/weightStability";
 import {
   Scale,
   CheckCircle,
@@ -162,8 +163,14 @@ function LiveWeighingContent() {
   const [operatorName, setOperatorName] = useState("");
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState("");
-  const stableStartRef = useRef<number | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stabilityRef = useRef(new WeightStability());
+  const cycleHandledRef = useRef(false);
+  const operationRef = useRef(false);
+  const recordRef = useRef<number | null>(null);
+  const activePartRef = useRef<number | undefined>(undefined);
+  const stableReadyRef = useRef(false);
+  const [printMessage, setPrintMessage] = useState("");
+  const partId = part?.id;
 
   // Load part by URL param
   useEffect(() => {
@@ -180,49 +187,62 @@ function LiveWeighingContent() {
       });
   }, [partParam]);
 
-  // Poll the scale
+  // Process every fresh sample, including identical weights. Never overlap requests.
   useEffect(() => {
+    stabilityRef.current.reset();
+    stableReadyRef.current = false;
+    setStable(false);
+    if (activePartRef.current !== partId) {
+      activePartRef.current = partId;
+      recordRef.current = null;
+      setLastRecordId(null);
+      setPrintMessage("");
+    }
     if (!polling) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
     const tick = async () => {
       try {
-        const res = await fetch("/api/scale");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setReading(data.data);
-            setScaleStatus(data.status);
-            setWeight(data.data.weight);
-          }
-        } else {
-          const data = await res.json();
-          setScaleStatus(data.status);
+        const res = await fetch("/api/scale", { cache: "no-store", signal: AbortSignal.timeout(2000) });
+        const data = await res.json();
+        if (cancelled) return;
+        setScaleStatus(data.status ?? null);
+        if (!res.ok || !data.success) throw new Error("Scale unavailable");
+        const sample: LiveReading = data.data;
+        setReading(sample);
+        setWeight(sample.weight);
+        const at = Date.parse(sample.at);
+        const fresh = Number.isFinite(at) && Date.now() - at <= MAX_READING_AGE_MS;
+        if (fresh && sample.source === "scale" && data.status?.connected &&
+            sample.weight <= WEIGHT_TOLERANCE_KG && !operationRef.current) {
+          cycleHandledRef.current = false;
+          recordRef.current = null;
+          setLastRecordId(null);
+          setPrintMessage("");
         }
+        const valid = !!partId && sample.source === "scale" && data.status?.connected;
+        if (!valid) stabilityRef.current.reset();
+        stableReadyRef.current = valid ? stabilityRef.current.update(sample.weight, at, Date.now()) : false;
+        setStable(stableReadyRef.current);
       } catch {
-        // network glitch; keep going
+        if (cancelled) return;
+        stabilityRef.current.reset();
+        stableReadyRef.current = false;
+        setStable(false);
+        setReading(null);
+      } finally {
+        if (!cancelled) timer = setTimeout(tick, 500);
       }
     };
-    tick();
-    pollRef.current = setInterval(tick, 500);
+    void tick();
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      cancelled = true;
+      clearTimeout(timer);
+      stabilityRef.current.reset();
     };
-  }, [polling]);
+  }, [polling, partId]);
 
-  // Detect stability (weight within 0.01kg for 1s)
-  useEffect(() => {
-    if (weight <= 0) {
-      stableStartRef.current = null;
-      setStable(false);
-      return;
-    }
-    if (stableStartRef.current === null) {
-      stableStartRef.current = Date.now();
-      setStable(false);
-      return;
-    }
-    const elapsed = Date.now() - stableStartRef.current;
-    if (elapsed > 800) setStable(true);
-  }, [weight]);
+  // Stability is calculated in the polling loop so an unchanged weight still advances time.
 
   // Search parts
   const doSearch = useCallback(async (q: string) => {
@@ -253,10 +273,10 @@ function LiveWeighingContent() {
     router.replace(`/weighing?part=${encodeURIComponent(p.partNumber)}`);
   }
 
-  async function handleRecord() {
-    if (!part || weight <= 0) return;
+  const saveRecord = useCallback(async (): Promise<number> => {
+    if (!part || weight <= 0) throw new Error("Select a part and weigh a bag first");
+    if (recordRef.current) return recordRef.current;
     setSubmitting(true);
-    setError("");
     try {
       const res = await fetch("/api/history", {
         method: "POST",
@@ -270,46 +290,59 @@ function LiveWeighingContent() {
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        setLastRecordId(data.data.id);
-        setOperatorName("");
-        setRemarks("");
-      } else {
-        setError(data.error || "Failed to record weighing");
-      }
-    } catch {
-      setError("Network error while recording weighing");
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to record weighing");
+      recordRef.current = data.data.id;
+      setLastRecordId(data.data.id);
+      setOperatorName("");
+      setRemarks("");
+      return data.data.id;
     } finally {
       setSubmitting(false);
     }
-  }
+  }, [part, weight, operatorName, remarks]);
 
-  async function handlePrint() {
-    if (!part) return;
+  const handlePrint = useCallback(async () => {
+    if (!part || operationRef.current || !polling || !stable || !stableReadyRef.current || !reading ||
+        Date.now() - Date.parse(reading.at) > MAX_READING_AGE_MS) return;
+    operationRef.current = true;
+    cycleHandledRef.current = true;
     setPrinting(true);
     setError("");
+    setPrintMessage("");
     try {
-      // Build the label payload including the just-recorded weight
-      // and status. The print route accepts a single partId and
-      // synthesizes the label from the part record. For a record
-      // stamped with a particular weight, the printer-side label
-      // already shows the bag weight spec — but the live weight and
-      // status are recorded in the database (visible on the History
-      // page and the printed QR). To label the actual reading on
-      // the printed label, pass it through a new print endpoint.
-      const body: Record<string, unknown> = { partId: part.id };
-      if (lastRecordId) body.recordId = lastRecordId;
+      const recordId = await saveRecord();
       const res = await fetch("/api/print", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ partId: part.id, recordId }),
       });
       const data = await res.json();
-      if (!data.success) setError(data.error || "Print failed");
-    } catch {
-      setError("Print request failed");
+      if (!res.ok || !data.success) throw new Error(data.error || "Print failed");
+      setPrintMessage("Label sent to printer. Remove the bag before weighing the next one.");
+    } catch (err) {
+      setError(`${err instanceof Error ? err.message : "Print request failed"}. Check the printer, then use Print Label to retry; automatic retry is disabled to prevent duplicates.`);
     } finally {
+      operationRef.current = false;
       setPrinting(false);
+    }
+  }, [part, polling, stable, reading, saveRecord]);
+
+  useEffect(() => {
+    if (stable && polling && !cycleHandledRef.current && !operationRef.current) {
+      void handlePrint();
+    }
+  }, [stable, polling, handlePrint]);
+
+  async function handleRecord() {
+    if (operationRef.current || !stable || !polling) return;
+    operationRef.current = true;
+    setError("");
+    try {
+      await saveRecord();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to record weighing");
+    } finally {
+      operationRef.current = false;
     }
   }
 
@@ -346,6 +379,7 @@ function LiveWeighingContent() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPolling((p) => !p)}
+            disabled={printing || submitting}
             className="text-xs px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
           >
             {polling ? "Pause" : "Resume"}
@@ -366,6 +400,7 @@ function LiveWeighingContent() {
           </div>
           <button
             onClick={() => setShowPartPicker(true)}
+            disabled={printing || submitting}
             className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium"
           >
             Change
@@ -407,7 +442,7 @@ function LiveWeighingContent() {
                 stable ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
               }`}
             />
-            {stable ? "Stable" : "Reading…"}
+            {stable ? "Stable for 5 seconds" : "Waiting for 5 seconds of stable weight…"}
           </span>
           {reading && (
             <span className="text-slate-400">
@@ -417,6 +452,11 @@ function LiveWeighingContent() {
           )}
         </div>
       </div>
+
+      <p className="text-sm text-slate-600">
+        Auto-print is enabled: a live scale weight within 0.005 kg for 5 seconds is saved and printed once.
+        Remove the bag (return to zero) to arm the next label. Mock readings never auto-print.
+      </p>
 
       {/* Status banner */}
       <StatusBanner
@@ -468,7 +508,7 @@ function LiveWeighingContent() {
           <button
             onClick={handleRecord}
             disabled={
-              submitting ||
+              submitting || printing || !polling || !!lastRecordId ||
               weight <= 0 ||
               !stable ||
               evaluation.status === "PENDING"
@@ -480,11 +520,11 @@ function LiveWeighingContent() {
             ) : (
               <Save className="w-5 h-5" />
             )}
-            {lastRecordId ? "Record Again" : "Record Weighing"}
+            {lastRecordId ? "Recorded" : "Record Weighing"}
           </button>
           <button
             onClick={handlePrint}
-            disabled={printing || !part}
+            disabled={printing || submitting || !part || !stable || !polling}
             className="flex items-center justify-center gap-2 py-4 bg-amber-400 text-[#1e3a5f] rounded-xl font-bold hover:bg-amber-500 disabled:opacity-50 transition-colors shadow-sm"
           >
             {printing ? (
@@ -500,7 +540,7 @@ function LiveWeighingContent() {
       {lastRecordId && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800 flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
-          Recorded as entry #{lastRecordId}. You can print the label now.
+          Recorded as entry #{lastRecordId}. {printMessage || (printing ? "Sending label…" : "Use Print Label to print this record.")}
         </div>
       )}
 
