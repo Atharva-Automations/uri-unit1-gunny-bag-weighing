@@ -93,7 +93,7 @@ export function buildLabel(data: LabelData) {
     throw new Error("Part number is too long for a readable QR on a 100 x 50 mm label");
   }
   const size = (qr.modules.size + 8) * cell;
-  const qrX = 70 + Math.floor((272 - size) / 2) + 4 * cell;
+  const qrX = 20 + Math.floor((272 - size) / 2) + 4 * cell;
   const qrY = 98 + Math.floor((272 - size) / 2) + 4 * cell;
   const squares: { x: number; y: number; size: number }[] = [];
   for (let y = 0; y < qr.modules.size; y++) {
