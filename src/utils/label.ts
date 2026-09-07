@@ -66,7 +66,7 @@ export function buildLabel(data: LabelData) {
     `Part No.    : ${cleanLabelText(data.partNumber || "")}`,
     `Qty/Bag     : ${data.quantity || 0} pcs`,
     `Min-Max     : ${min} - ${max} kg`,
-    `Expected Bag: ${bag} - ${bagMax} kg`,
+    `Exp. Bag    : ${bag} - ${bagMax} kg`,
     `Date        : ${date}`,
   ];
   if (actual !== null) rows.push(`Actual Wt.  : ${actual} kg`);
