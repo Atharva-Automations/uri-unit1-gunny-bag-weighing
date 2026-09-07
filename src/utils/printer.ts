@@ -78,6 +78,7 @@ export function generateGunnyBagTSPL(data: GunnyBagLabelData): string {
     `SIZE ${LABEL.widthMm} mm, ${LABEL.heightMm} mm`,
     "GAP 3 mm, 0 mm",
     "DIRECTION 0",
+    "OFFSET 4 mm, 0 mm",
     "REFERENCE 0,0",
     "CLS",
     "BOX 60,12,740,388,2",
