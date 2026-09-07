@@ -81,7 +81,7 @@ export function generateGunnyBagTSPL(data: GunnyBagLabelData): string {
     "REFERENCE 0,0",
     "CLS",
     "BOX 12,12,788,388,2",
-    'TEXT 166,30,"3",0,2,2,"UNITED RUBBER INDUSTRIES"',
+    'TEXT 40,28,"3",0,2,2," UNITED  RUBBER  INDUSTRIES "',
     "BAR 12,82,776,2",
     "BAR 320,82,2,306",
     ...artwork.squares.map(({ x, y, size }) => `BAR ${x},${y},${size},${size}`),

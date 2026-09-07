@@ -79,7 +79,7 @@ export function buildLabel(data: LabelData) {
     x: TXT_X,
     y: startY + i * lineH,
     text,
-    font: "2",
+    font: "3",
   }));
 
   // Render QR via the `qrcode` package so the matrix is bit-accurate
