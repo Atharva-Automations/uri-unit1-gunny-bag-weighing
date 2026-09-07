@@ -74,7 +74,7 @@ export function buildLabel(data: LabelData) {
 
   const startY = 130;
   const lineH = 33;
-  const TXT_X = 305;
+  const TXT_X = 280;
   const texts = rows.map((text, i) => ({
     x: TXT_X,
     y: startY + i * lineH,
