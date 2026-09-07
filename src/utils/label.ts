@@ -73,13 +73,13 @@ export function buildLabel(data: LabelData) {
   if (status) rows.push(`Status      : ${status}`);
 
   const startY = 130;
-  const lineH = 30;
+  const lineH = 33;
   const TXT_X = 342;
   const texts = rows.map((text, i) => ({
     x: TXT_X,
     y: startY + i * lineH,
     text,
-    font: "0",
+    font: "3",
   }));
 
   // Render QR via the `qrcode` package so the matrix is bit-accurate
