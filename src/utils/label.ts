@@ -38,9 +38,9 @@ export const cleanLabelText = (value: string) =>
  */
 export function buildLabel(data: LabelData) {
   const kg = (v: string | number | null | undefined) => {
-    if (v === null || v === undefined || v === "") return "0.000";
+    if (v === null || v === undefined || v === "") return "0.00";
     const n = Number(v);
-    return Number.isFinite(n) ? n.toFixed(3) : "0.000";
+    return Number.isFinite(n) ? n.toFixed(2) : "0.00";
   };
   const date = new Date(data.recordedAt ?? Date.now())
     .toLocaleDateString("en-GB", {
@@ -63,17 +63,17 @@ export function buildLabel(data: LabelData) {
   const desc = cleanLabelText(data.description || "").slice(0, 32);
 
   const rows: string[] = [
-    `Part No.    : ${cleanLabelText(data.partNumber || "")}`,
-    `Qty/Bag     : ${data.quantity || 0} pcs`,
-    `Min-Max     : ${min} - ${max} kg`,
-    `Exp. Bag    : ${bag} - ${bagMax} kg`,
-    `Date        : ${date}`,
+    `Part No.        : ${cleanLabelText(data.partNumber || "")}`,
+    `Qty/Bag         : ${data.quantity || 0} pcs`,
+    `Min-Max (kg)    : ${min} - ${max}`,
+    `Exp. Bag (kg)   : ${bag} - ${bagMax}`,
+    `Date            : ${date}`,
   ];
-  if (actual !== null) rows.push(`Actual Wt.  : ${actual} kg`);
-  if (status) rows.push(`Status      : ${status}`);
+  if (actual !== null) rows.push(`Actual Wt. (kg)  : ${actual}`);
+  if (status) rows.push(`Status          : ${status}`);
 
-  const startY = 130;
-  const lineH = 30;
+  const startY = 120;
+  const lineH = 40;
   const TXT_X = 290;
   const texts = rows.map((text, i) => ({
     x: TXT_X,
