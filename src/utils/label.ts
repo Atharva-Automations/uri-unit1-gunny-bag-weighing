@@ -69,17 +69,17 @@ export function buildLabel(data: LabelData) {
     `Exp. Bag (kg)   : ${bag} - ${bagMax}`,
     `Date            : ${date}`,
   ];
-  if (actual !== null) rows.push(`Actual Wt. (kg)  : ${actual}`);
+  if (actual !== null) rows.push(`Actual Wt. (kg) : ${actual}`);
   if (status) rows.push(`Status          : ${status}`);
 
   const startY = 120;
-  const lineH = 34;
+  const lineH = 30;
   const TXT_X = 290;
   const texts = rows.map((text, i) => ({
     x: TXT_X,
     y: startY + i * lineH,
     text,
-    font: "2",
+    font: "0",
   }));
 
   // Render QR via the `qrcode` package so the matrix is bit-accurate
