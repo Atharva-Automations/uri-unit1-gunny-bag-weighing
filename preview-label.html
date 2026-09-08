@@ -56,7 +56,7 @@ function render(container, data) {
   // Heading (font 3 in TSPL = sans-serif, 1x1 = 16x24)
   // The actual TSPL string is " UNITED  RUBBER  INDUSTRIES " (padded with
   // double spaces between words). For the preview we render it cleaner.
-  html.push(`<text x="168" y="62" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#000">UNITED  RUBBER  INDUSTRIES</text>`);
+  html.push(`<text x="208" y="58" font-family="Consolas, 'Courier New', monospace" font-size="20" fill="#000">UNITED  RUBBER  INDUSTRIES</text>`);
 
   // QR placeholder (matches the 21x21 modules / cell=9 used for short
   // part numbers — actual TSPL uses bit-accurate module grid).
@@ -98,11 +98,10 @@ function render(container, data) {
     `Actual Wt. (kg) : ${data.actual}`,
     `Status          : ${data.status}`,
   ];
-  const startY = 120, lineH = 40, TXT_X = 290;
-  // Font 6 in TSPL = 14x19 OCR-B. For preview use monospace ~16px so
-  // the visual weight is close.
+  const startY = 120, lineH = 34, TXT_X = 290;
+  // Font 2 in TSPL = 12x24 fixed-pitch monospace.
   for (let i = 0; i < rows.length; i++) {
-    html.push(`<text x="${TXT_X}" y="${startY + i * lineH + 18}" font-family="Consolas, 'Courier New', monospace" font-size="18" fill="#000">${escapeXml(rows[i])}</text>`);
+    html.push(`<text x="${TXT_X}" y="${startY + i * lineH + 20}" font-family="Consolas, 'Courier New', monospace" font-size="16" fill="#000">${escapeXml(rows[i])}</text>`);
   }
 
   html.push(`</svg>`);
