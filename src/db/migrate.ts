@@ -71,6 +71,61 @@ async function pushSchemaRaw(pool: Pool) {
         ON weighing_history(part_id);
       CREATE INDEX IF NOT EXISTS idx_weighing_history_recorded_at
         ON weighing_history(recorded_at);
+
+      CREATE TABLE IF NOT EXISTS compound_inwards (
+        id SERIAL PRIMARY KEY,
+        part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+        inward_number VARCHAR(60) NOT NULL UNIQUE,
+        label_code VARCHAR(100) NOT NULL UNIQUE,
+        quantity INTEGER NOT NULL CHECK (quantity > 0),
+        supplier VARCHAR(200),
+        batch_number VARCHAR(100),
+        operator_name VARCHAR(200),
+        remarks TEXT,
+        received_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS compound_cis (
+        id SERIAL PRIMARY KEY,
+        inward_id INTEGER NOT NULL REFERENCES compound_inwards(id) ON DELETE CASCADE,
+        part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+        cis_number VARCHAR(60) NOT NULL UNIQUE,
+        label_code VARCHAR(100) NOT NULL UNIQUE,
+        quantity INTEGER NOT NULL CHECK (quantity > 0),
+        operator_name VARCHAR(200),
+        remarks TEXT,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS compound_outwards (
+        id SERIAL PRIMARY KEY,
+        cis_id INTEGER NOT NULL REFERENCES compound_cis(id) ON DELETE CASCADE,
+        part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+        outward_number VARCHAR(60) NOT NULL UNIQUE,
+        label_code VARCHAR(100) NOT NULL UNIQUE,
+        quantity INTEGER NOT NULL CHECK (quantity > 0),
+        destination VARCHAR(200),
+        operator_name VARCHAR(200),
+        remarks TEXT,
+        dispatched_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS compound_returns (
+        id SERIAL PRIMARY KEY,
+        part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+        outward_id INTEGER REFERENCES compound_outwards(id) ON DELETE SET NULL,
+        cis_id INTEGER REFERENCES compound_cis(id) ON DELETE SET NULL,
+        quantity INTEGER NOT NULL CHECK (quantity > 0),
+        reason VARCHAR(500) NOT NULL,
+        operator_name VARCHAR(200),
+        remarks TEXT,
+        returned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_compound_inwards_part_id ON compound_inwards(part_id);
+      CREATE INDEX IF NOT EXISTS idx_compound_cis_part_id ON compound_cis(part_id);
+      CREATE INDEX IF NOT EXISTS idx_compound_outwards_part_id ON compound_outwards(part_id);
+      CREATE INDEX IF NOT EXISTS idx_compound_returns_part_id ON compound_returns(part_id);
     `);
 
     // Migrate existing parts table: replace max_bag_weight with actual_weight

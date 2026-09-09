@@ -12,29 +12,38 @@ export interface LabelData {
   recordedAt?: string | Date | null;
 }
 
-// Shared 203-dpi artwork: 100 mm wide x 50 mm high.
-export const LABEL = { width: 800, height: 400, widthMm: 100, heightMm: 50 };
+// Shared 203-dpi artwork: 100 mm wide x 50 mm high (landscape).
+// The printer maps 1 mm to 8 dots at 203 dpi. TSPL font 2 is 12 dots wide
+// at 1x scale, so these limits are based on printer dots, not CSS pixels.
+export const LABEL = {
+  width: 800,
+  height: 400,
+  widthMm: 100,
+  heightMm: 50,
+  borderLeft: 26,
+  borderRight: 774,
+  textX: 280,
+  textFont: "2",
+  textCharWidth: 12,
+} as const;
 export const cleanLabelText = (value: string) =>
   value.replace(/[\x00-\x1f\x7f-￿]/g, " ").replace(/"/g, "'");
 
 /**
- * Build the QR + text artwork for a 100x50mm label. Layout follows the
- * reference "PREMIER SEALING PRODUCTS" template (renamed to
- * "UNITED RUBBER"):
+ * Build the QR + text artwork for a 50x100mm portrait label. Layout:
  *
- *   ┌────────────────────────────────────────── 800 dots ──────────────┐
- *   │             UNITED  RUBBER                                        │  30
- *   │  ────────────────────────────────────────────────────────────    │  82
- *   │  ┌──────┐                                                          │
- *   │  │  QR  │  PART NO.  : PN-0001                                    │ 130
- *   │  │ 272  │  DESC      : Black Rubber Sheet                          │ 163
- *   │  │ dots │  QTY       : 100 pcs                                    │ 196
- *   │  │      │  MIN-MAX   : 0.500 - 1.000 kg                           │ 229
- *   │  │      │  MAX BAG   : 100.000 kg                                 │ 262
- *   │  │      │  ACTUAL    : 12.345 kg                                  │ 295
- *   │  │      │  STATUS    : OK                                          │ 328
- *   │  └──────┘  DATE      : 04-09-2026                                  │ 361
- *   └────────────────────────────────────────────────────────────────────┘
+ *   ┌──────────────────── 400 dots (50mm) ────────────────────┐
+ *   │         UNITED  RUBBER  INDUSTRIES                        │  30
+ *   │  ─────────────────────────────────────────────────────    │  70
+ *   │  ┌──────────┐                                             │
+ *   │  │   QR     │  Part No.        : PN-0001                  │ 100
+ *   │  │  150     │  Qty/Bag         : 100 pcs                 │ 130
+ *   │  │  dots   │  Min-Max (kg)    : 0.50 - 1.00             │ 160
+ *   │  │          │  Exp. Bag (kg)   : 50.00 - 100.00         │ 190
+ *   │  └──────────┘  Date            : 07-09-2026             │ 220
+ *   │              Actual Wt. (kg) : 55.20                   │ 250
+ *   │              Status          : OK                      │ 280
+ *   └────────────────────────────────────────────────────────────┘
  */
 export function buildLabel(data: LabelData) {
   const kg = (v: string | number | null | undefined) => {
@@ -65,7 +74,7 @@ export function buildLabel(data: LabelData) {
   const rows: string[] = [
     `Part No.        : ${cleanLabelText(data.partNumber || "")}`,
     `Qty/Bag         : ${data.quantity || 0} pcs`,
-    `Min-Max (kg)    : ${min} - ${max}`,
+    `Min - Max (kg)  : ${min} - ${max}`,
     `Exp. Bag (kg)   : ${bag} - ${bagMax}`,
     `Date            : ${date}`,
   ];
@@ -74,12 +83,14 @@ export function buildLabel(data: LabelData) {
 
   const startY = 120;
   const lineH = 30;
-  const TXT_X = 290;
+  const maxTextChars = Math.floor(
+    (LABEL.borderRight - LABEL.textX - 12) / LABEL.textCharWidth
+  );
   const texts = rows.map((text, i) => ({
-    x: TXT_X,
+    x: LABEL.textX,
     y: startY + i * lineH,
-    text,
-    font: "0",
+    text: text.slice(0, maxTextChars),
+    font: LABEL.textFont,
   }));
 
   // Render QR via the `qrcode` package so the matrix is bit-accurate
@@ -93,7 +104,7 @@ export function buildLabel(data: LabelData) {
     throw new Error("Part number is too long for a readable QR on a 100 x 50 mm label");
   }
   const size = (qr.modules.size + 8) * cell;
-  const qrX = 20 + Math.floor((272 - size) / 2) + 4 * cell;
+  const qrX = 23 + Math.floor((272 - size) / 2) + 4 * cell;
   const qrY = 98 + Math.floor((272 - size) / 2) + 4 * cell;
   const squares: { x: number; y: number; size: number }[] = [];
   for (let y = 0; y < qr.modules.size; y++) {

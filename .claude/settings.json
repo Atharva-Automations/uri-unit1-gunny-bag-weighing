@@ -95,7 +95,14 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(cd \"c:/Gunny_bag_weighing\" && /c/Windows/System32/taskkill.exe //F //IM node.exe 2>&1 | head -3 && rm -rf .git .next 2>&1)",
-      "Bash(git -c user.email=\"dev@local\" -c user.name=\"dev\" commit -m \"Snapshot: working scale \\(FC4\\), 100x50mm labels, timezone fix, master/detail/print modules active\")"
+      "Bash(git -c user.email=\"dev@local\" -c user.name=\"dev\" commit -m \"Snapshot: working scale \\(FC4\\), 100x50mm labels, timezone fix, master/detail/print modules active\")",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('Username:', process.env.COMPOUND_INVENTORY_USERNAME\\); console.log\\('Password:', process.env.COMPOUND_INVENTORY_PASSWORD\\);\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -X POST http://localhost:3000/api/compound-inventory/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}' -c /tmp/cookies.txt -v)",
+      "Bash(tee dev-output.log)",
+      "Bash(curl -X POST http://localhost:3000/api/compound-inventory/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(taskkill /F /IM node.exe)"
     ],
     "additionalDirectories": [
       "C:\\Program Files\\PostgreSQL\\18\\data",

@@ -125,12 +125,12 @@ export async function writeLabelPDF(payload: LabelPayload): Promise<Buffer> {
   row("Batch", payload.description.slice(0, 30));
   row("Qty", `${payload.quantity} pcs`);
   row(
-    "Min–Max",
-    `${parseFloat(payload.minWeight).toFixed(3)} - ${parseFloat(payload.maxWeight).toFixed(3)} kg`
+    "Min - Max (kg)",
+    `${parseFloat(payload.minWeight).toFixed(2)} - ${parseFloat(payload.maxWeight).toFixed(2)}`
   );
   row(
     "Max Bag",
-    `${(parseFloat(payload.maxWeight) * payload.quantity).toFixed(3)} kg`
+    `${(parseFloat(payload.maxWeight) * payload.quantity).toFixed(2)}`
   );
 
   if (payload.recordedAt) {
@@ -144,7 +144,7 @@ export async function writeLabelPDF(payload: LabelPayload): Promise<Buffer> {
     y += 4;
     row(
       "Actual",
-      `${parseFloat(payload.recordActualWeight).toFixed(3)} kg`,
+      `${parseFloat(payload.recordActualWeight).toFixed(2)}`,
       { bold: true, size: 11, color: "#0f172a" }
     );
   }
