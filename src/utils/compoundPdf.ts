@@ -12,7 +12,11 @@ type CompoundInventoryData = {
 export async function generateCompoundInventoryPDF(data: CompoundInventoryData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: "A4", margin: 50 });
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 50,
+        autoFirstPage: true
+      });
       const chunks: Buffer[] = [];
 
       doc.on("data", (chunk) => chunks.push(chunk));
@@ -52,12 +56,12 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       doc.fillColor("white")
         .fontSize(22)
         .font("Helvetica-Bold")
-        .text("COMPOUND INVENTORY", leftMargin + 100, headerY + 30, { width: pageWidth - 120 });
+        .text("COMPOUND INVENTORY", leftMargin + 100, headerY + 30, { width: pageWidth - 120, lineBreak: false });
 
       doc.fillColor("white")
         .fontSize(22)
         .font("Helvetica-Bold")
-        .text("REPORT", leftMargin + 100, headerY + 60, { width: pageWidth - 120 });
+        .text("REPORT", leftMargin + 100, headerY + 60, { width: pageWidth - 120, lineBreak: false });
 
       // Timestamp
       const now = new Date();
@@ -67,7 +71,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       doc.fontSize(10)
         .font("Helvetica")
         .fillColor("#cbd5e1")
-        .text(`Generated on: ${dateStr} | ${timeStr}`, leftMargin + 100, headerY + 95, { width: pageWidth - 120 });
+        .text(`Generated on: ${dateStr} | ${timeStr}`, leftMargin + 100, headerY + 95, { width: pageWidth - 120, lineBreak: false });
 
       // === PART INFORMATION SECTION ===
       let yPos = headerY + headerHeight + 50;
@@ -82,7 +86,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       doc.fillColor("#17324d")
         .fontSize(16)
         .font("Helvetica-Bold")
-        .text("PART INFORMATION", leftMargin + 50, yPos);
+        .text("PART INFORMATION", leftMargin + 50, yPos, { lineBreak: false });
 
       // Blue underline
       doc.moveTo(leftMargin + 50, yPos + 22)
@@ -103,31 +107,31 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       doc.fillColor("#64748b")
         .fontSize(11)
         .font("Helvetica-Bold")
-        .text("Part Number", leftMargin + 30, yPos + 25);
+        .text("Part Number", leftMargin + 30, yPos + 25, { lineBreak: false });
 
       doc.fillColor("#0f172a")
         .fontSize(11)
-        .text(":", leftMargin + 200, yPos + 25);
+        .text(":", leftMargin + 200, yPos + 25, { lineBreak: false });
 
       doc.fillColor("#0f172a")
         .fontSize(12)
         .font("Helvetica-Bold")
-        .text(data.partNumber, leftMargin + 230, yPos + 24);
+        .text(data.partNumber, leftMargin + 230, yPos + 24, { lineBreak: false });
 
       // Description
       doc.fillColor("#64748b")
         .fontSize(11)
         .font("Helvetica-Bold")
-        .text("Description", leftMargin + 30, yPos + 65);
+        .text("Description", leftMargin + 30, yPos + 65, { lineBreak: false });
 
       doc.fillColor("#0f172a")
         .fontSize(11)
-        .text(":", leftMargin + 200, yPos + 65);
+        .text(":", leftMargin + 200, yPos + 65, { lineBreak: false });
 
       doc.fillColor("#0f172a")
         .fontSize(11)
         .font("Helvetica")
-        .text(data.description, leftMargin + 230, yPos + 64, { width: 250 });
+        .text(data.description, leftMargin + 230, yPos + 64, { width: 250, lineBreak: false });
 
       yPos += boxHeight + 50;
 
@@ -141,7 +145,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       doc.fillColor("#17324d")
         .fontSize(16)
         .font("Helvetica-Bold")
-        .text("MOVEMENT SUMMARY", leftMargin + 50, yPos);
+        .text("MOVEMENT SUMMARY", leftMargin + 50, yPos, { lineBreak: false });
 
       doc.moveTo(leftMargin + 50, yPos + 22)
         .lineTo(leftMargin + 230, yPos + 22)
@@ -169,10 +173,10 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
 
       doc.fillColor("white")
         .fontSize(12)
-        .font("Helvetica-Bold")
-        .text("Transaction Type", leftMargin + 30, tableStartY + 13)
-        .text("Quantity", leftMargin + 280, tableStartY + 13, { width: 80, align: "center" })
-        .text("Balance", leftMargin + 400, tableStartY + 13, { width: 80, align: "center" });
+        .font("Helvetica-Bold");
+      doc.text("Transaction Type", leftMargin + 30, tableStartY + 13, { lineBreak: false });
+      doc.text("Quantity", leftMargin + 280, tableStartY + 13, { width: 80, align: "center", lineBreak: false });
+      doc.text("Balance", leftMargin + 400, tableStartY + 13, { width: 80, align: "center", lineBreak: false });
 
       yPos = tableStartY + headerRowHeight + 5;
 
@@ -194,18 +198,18 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
 
         doc.fillColor("#0f172a")
           .fontSize(11)
-          .font("Helvetica")
-          .text(txn.label, leftMargin + 30, yPos + 10);
+          .font("Helvetica");
+        doc.text(txn.label, leftMargin + 30, yPos + 10, { lineBreak: false });
 
         doc.fillColor("#0f172a")
           .fontSize(12)
-          .font("Helvetica-Bold")
-          .text(String(txn.qty), leftMargin + 280, yPos + 10, { width: 80, align: "center" });
+          .font("Helvetica-Bold");
+        doc.text(String(txn.qty), leftMargin + 280, yPos + 10, { width: 80, align: "center", lineBreak: false });
 
         doc.fillColor("#64748b")
           .fontSize(11)
-          .font("Helvetica")
-          .text(txn.balance, leftMargin + 400, yPos + 10, { width: 80, align: "center" });
+          .font("Helvetica");
+        doc.text(txn.balance, leftMargin + 400, yPos + 10, { width: 80, align: "center", lineBreak: false });
 
         yPos += rowHeight;
       });
@@ -233,18 +237,18 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
 
         doc.fillColor("#0f172a")
           .fontSize(11)
-          .font("Helvetica-Bold")
-          .text(bal.label, leftMargin + 30, yPos + 10);
+          .font("Helvetica-Bold");
+        doc.text(bal.label, leftMargin + 30, yPos + 10, { lineBreak: false });
 
         doc.fillColor("#64748b")
           .fontSize(11)
-          .font("Helvetica")
-          .text("—", leftMargin + 280, yPos + 10, { width: 80, align: "center" });
+          .font("Helvetica");
+        doc.text("—", leftMargin + 280, yPos + 10, { width: 80, align: "center", lineBreak: false });
 
         doc.fillColor(bal.color)
           .fontSize(16)
-          .font("Helvetica-Bold")
-          .text(String(bal.balance), leftMargin + 400, yPos + 8, { width: 80, align: "center" });
+          .font("Helvetica-Bold");
+        doc.text(String(bal.balance), leftMargin + 400, yPos + 8, { width: 80, align: "center", lineBreak: false });
 
         yPos += rowHeight;
       });
@@ -257,19 +261,19 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
         .fill();
       doc.fillColor("#3b82f6")
         .fontSize(9)
-        .font("Helvetica-Bold")
-        .text("i", leftMargin + 22, yPos + 1);
+        .font("Helvetica-Bold");
+      doc.text("i", leftMargin + 22, yPos + 1, { lineBreak: false });
       doc.restore();
 
       doc.fillColor("#64748b")
         .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("Note:", leftMargin + 50, yPos + 2);
+        .font("Helvetica-Bold");
+      doc.text("Note:", leftMargin + 50, yPos + 2, { lineBreak: false });
 
       doc.fillColor("#94a3b8")
         .fontSize(10)
-        .font("Helvetica-Oblique")
-        .text("All quantities are presented in unit count.", leftMargin + 90, yPos + 2);
+        .font("Helvetica-Oblique");
+      doc.text("All quantities are presented in unit count.", leftMargin + 90, yPos + 2, { lineBreak: false });
 
       doc.end();
     } catch (error) {

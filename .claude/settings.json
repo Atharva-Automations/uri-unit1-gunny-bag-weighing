@@ -102,7 +102,9 @@
       "Bash(curl -X POST http://localhost:3000/api/compound-inventory/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}' -c /tmp/cookies.txt -v)",
       "Bash(tee dev-output.log)",
       "Bash(curl -X POST http://localhost:3000/api/compound-inventory/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
-      "Bash(taskkill /F /IM node.exe)"
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(node -e \"require\\('./node_modules/pdfkit'\\)\")",
+      "Bash(npm list *)"
     ],
     "additionalDirectories": [
       "C:\\Program Files\\PostgreSQL\\18\\data",
