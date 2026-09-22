@@ -104,7 +104,8 @@
       "Bash(curl -X POST http://localhost:3000/api/compound-inventory/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
       "Bash(taskkill /F /IM node.exe)",
       "Bash(node -e \"require\\('./node_modules/pdfkit'\\)\")",
-      "Bash(npm list *)"
+      "Bash(npm list *)",
+      "Bash(npx tsx *)"
     ],
     "additionalDirectories": [
       "C:\\Program Files\\PostgreSQL\\18\\data",
