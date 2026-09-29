@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Label preview (preview only — TSPL is the source of truth)</title>
+<style>
+  body { background: #f5f5f5; font-family: system-ui, sans-serif; padding: 24px; }
+  .label {
+    width: 100mm; height: 50mm;
+    background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    position: relative; overflow: hidden;
+  }
+  .meta { color: #666; font-size: 11px; margin-top: 8px; }
+  .stack { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+  /* The numbers below are dots in the 800x400 TSPL coordinate system, scaled
+     to a 100mm x 50mm label. At 203 dpi, 1mm = 8 dots. */
+</style>
+</head>
+<body>
+<h2>Label preview</h2>
+<div class="stack">
+  <div class="label" id="label1"></div>
+  <div class="meta">Part PN-0001 · Min-Max 0.50-1.00 kg · Qty 100</div>
+  <div class="label" id="label2"></div>
+  <div class="meta">Part PN-0007 · Min-Max 1.20-2.00 kg · Qty 50</div>
+</div>
+
+<script type="module">
+// Match the TSPL layout exactly:
+//   SIZE 100mm, 50mm  → 800 x 400 dots
+//   BOX 26,12,774,388
+//   Heading x=168 y=42
+//   Top divider y=82
+//   Vertical divider x=270, y=82..388
+//   QR: anchored at 20+(272-size)/2+4*cell
+//   Text col: x=290, y=120+i*40, font 6 (14x19)
+
+const LABEL_W = 800, LABEL_H = 400;
+
+function render(container, data) {
+  const sx = container.clientWidth / LABEL_W;   // mm-to-px scale
+  const html = [];
+
+  // Outer box
+  html.push(`<svg viewBox="0 0 ${LABEL_W} ${LABEL_H}" width="100mm" height="50mm" style="background:#fff">`);
+
+  // Outer border
+  html.push(`<rect x="26" y="12" width="748" height="376" fill="none" stroke="#000" stroke-width="2"/>`);
+
+  // Top horizontal divider (full width of inner box)
+  html.push(`<line x1="26" y1="82" x2="774" y2="82" stroke="#000" stroke-width="2"/>`);
+
+  // Vertical divider
+  html.push(`<line x1="270" y1="82" x2="270" y2="388" stroke="#000" stroke-width="2"/>`);
+
+  // Heading (font 3 in TSPL = sans-serif, 1x1 = 16x24)
+  // The actual TSPL string is " UNITED  RUBBER  INDUSTRIES " (padded with
+  // double spaces between words). For the preview we render it cleaner.
+  html.push(`<text x="208" y="58" font-family="Consolas, 'Courier New', monospace" font-size="20" fill="#000">UNITED  RUBBER  INDUSTRIES</text>`);
+
+  // QR placeholder (matches the 21x21 modules / cell=9 used for short
+  // part numbers — actual TSPL uses bit-accurate module grid).
+  // We'll render a 21x21 dummy QR so the size matches.
+  const qrModules = 21;
+  const cell = Math.floor(272 / (qrModules + 8));  // = 9
+  const qrSize = (qrModules + 8) * cell;           // = 261
+  const qrX = 20 + Math.floor((272 - qrSize) / 2) + 4 * cell;  // 71
+  const qrY = 98 + Math.floor((272 - qrSize) / 2) + 4 * cell;  // 149
+  // QR background
+  html.push(`<rect x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" fill="#fff" stroke="#000" stroke-width="1"/>`);
+  // Find pattern: three corner squares
+  const fp = 7 * cell;
+  const corners = [[qrX, qrY], [qrX + qrSize - fp, qrY], [qrX, qrY + qrSize - fp]];
+  for (const [cx, cy] of corners) {
+    html.push(`<rect x="${cx}" y="${cy}" width="${fp}" height="${fp}" fill="#000"/>`);
+    html.push(`<rect x="${cx + cell}" y="${cy + cell}" width="${5 * cell}" height="${5 * cell}" fill="#fff"/>`);
+    html.push(`<rect x="${cx + 2 * cell}" y="${cy + 2 * cell}" width="${3 * cell}" height="${3 * cell}" fill="#000"/>`);
+  }
+  // Pseudo-random inner modules
+  for (let y = 0; y < qrModules; y++) {
+    for (let x = 0; x < qrModules; x++) {
+      // skip the three finder patterns
+      if ((x < 7 && y < 7) || (x >= qrModules - 7 && y < 7) || (x < 7 && y >= qrModules - 7)) continue;
+      // pseudo-random pattern (deterministic)
+      if (((x * 31 + y * 17 + x * y) % 3) === 0) {
+        html.push(`<rect x="${qrX + 4 * cell + x * cell}" y="${qrY + 4 * cell + y * cell}" width="${cell}" height="${cell}" fill="#000"/>`);
+      }
+    }
+  }
+
+  // Body rows
+  const rows = [
+    `Part No.        : ${data.partNumber}`,
+    `Qty/Bag         : ${data.qty} pcs`,
+    `Min - Max (kg)  : ${data.min} - ${data.max}`,
+    `Exp. Bag (kg)   : ${data.bagMin} - ${data.bagMax}`,
+    `Date            : ${data.date}`,
+    `Actual Wt. (kg) : ${data.actual}`,
+    `Status          : ${data.status}`,
+  ];
+  const startY = 120, lineH = 34, TXT_X = 290;
+  // Font 2 in TSPL = 12x24 fixed-pitch monospace.
+  for (let i = 0; i < rows.length; i++) {
+    html.push(`<text x="${TXT_X}" y="${startY + i * lineH + 20}" font-family="Consolas, 'Courier New', monospace" font-size="16" fill="#000">${escapeXml(rows[i])}</text>`);
+  }
+
+  html.push(`</svg>`);
+  container.innerHTML = html.join('');
+}
+
+function escapeXml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+render(document.getElementById('label1'), {
+  partNumber: 'PN-0001',
+  qty: 100,
+  min: '0.50', max: '1.00',
+  bagMin: '50.00', bagMax: '100.00',
+  date: '07-09-2026',
+  actual: '55.20',
+  status: 'OK',
+});
+
+render(document.getElementById('label2'), {
+  partNumber: 'PN-0007',
+  qty: 50,
+  min: '1.20', max: '2.00',
+  bagMin: '60.00', bagMax: '100.00',
+  date: '07-09-2026',
+  actual: '0.50',
+  status: 'UNDERWEIGHT',
+});
+</script>
+</body>
+</html>
