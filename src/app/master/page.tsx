@@ -157,7 +157,7 @@ function PartDetailModal({
     { label: "Actual Bag Weight", value: `${actBag.toFixed(3)} kg`, tone: "amber" },
     { label: "Max Bag Weight", value: `${expMaxBag.toFixed(3)} kg`, tone: "red" },
   ];
-
+ 
   const toneCls: Record<string, string> = {
     default: "bg-slate-50 text-slate-800",
     amber: "bg-amber-50 text-amber-700",

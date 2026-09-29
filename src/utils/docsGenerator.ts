@@ -528,7 +528,7 @@ export async function generateDocumentationPDF(): Promise<Buffer> {
 
     h2("5.4 Compound Inventory Subsystems");
     p(
-      "The Compound Inventory module introduces end-to-end multi-stage tracking: Inward Receipt (raw materials received from external suppliers), Compound Issue Slip / CIS (materials staged for internal processing), and Outward Dispatch (finished goods ready for shipment). Each stage generates a unique reference number, prints a 100×50mm label, and provides a scan-to-advance transition."
+      "The Compound Inventory module introduces end-to-end multi-stage tracking: Inward Receipt (raw materials received from external suppliers), Compound Issue Slip / CIS (materials staged for internal processing), and Outward Dispatch (finished goods ready for shipment). Inward and CIS records generate unique reference numbers and 100×50mm labels for scan-to-advance transitions; outward records use a unique reference number without label printing."
     );
 
     // ========================================================================

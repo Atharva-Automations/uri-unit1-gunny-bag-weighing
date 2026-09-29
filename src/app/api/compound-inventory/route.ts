@@ -61,21 +61,7 @@ export async function GET(request: NextRequest) {
           .from(compoundCis)
           .innerJoin(parts, eq(parts.id, compoundCis.partId))
           .where(eq(compoundCis.labelCode, scan)),
-        db
-          .select({
-            id: compoundOutwards.id,
-            labelCode: compoundOutwards.labelCode,
-            outwardNumber: compoundOutwards.outwardNumber,
-            quantity: compoundOutwards.quantity,
-            cisId: compoundOutwards.cisId,
-            destination: compoundOutwards.destination,
-            partId: parts.id,
-            partNumber: parts.partNumber,
-            description: parts.description,
-          })
-          .from(compoundOutwards)
-          .innerJoin(parts, eq(parts.id, compoundOutwards.partId))
-          .where(eq(compoundOutwards.labelCode, scan)),
+        Promise.resolve([]),
       ]);
       return NextResponse.json({ success: true, data: { inward: inward[0] ?? null, cis: cis[0] ?? null, outward: outward[0] ?? null } });
     }
@@ -89,7 +75,7 @@ export async function GET(request: NextRequest) {
       db.select({ record: compoundInwards, partNumber: parts.partNumber, description: parts.description }).from(compoundInwards).innerJoin(parts, eq(parts.id, compoundInwards.partId)).orderBy(desc(compoundInwards.receivedAt)).limit(100),
       db.select({ record: compoundCis, partNumber: parts.partNumber, description: parts.description, inwardNumber: compoundInwards.inwardNumber }).from(compoundCis).innerJoin(parts, eq(parts.id, compoundCis.partId)).innerJoin(compoundInwards, eq(compoundInwards.id, compoundCis.inwardId)).orderBy(desc(compoundCis.createdAt)).limit(100),
       db.select({ record: compoundOutwards, partNumber: parts.partNumber, description: parts.description, cisNumber: compoundCis.cisNumber }).from(compoundOutwards).innerJoin(parts, eq(parts.id, compoundOutwards.partId)).innerJoin(compoundCis, eq(compoundCis.id, compoundOutwards.cisId)).orderBy(desc(compoundOutwards.dispatchedAt)).limit(100),
-      db.select({ record: compoundReturns, partNumber: parts.partNumber, description: parts.description }).from(compoundReturns).innerJoin(parts, eq(parts.id, compoundReturns.partId)).orderBy(desc(compoundReturns.returnedAt)).limit(100),
+      db.select({ record: compoundReturns, partNumber: parts.partNumber, description: parts.description, addToInventory: compoundReturns.addToInventory }).from(compoundReturns).innerJoin(parts, eq(parts.id, compoundReturns.partId)).orderBy(desc(compoundReturns.returnedAt)).limit(100),
     ]);
 
     const totals = (rows: { partId: number; total: number }[]) => new Map(rows.map((row) => [row.partId, Number(row.total)]));
@@ -196,7 +182,6 @@ export async function POST(request: NextRequest) {
           cisId,
           partId,
           outwardNumber: reference("OUT"),
-          labelCode: reference("OUT-LBL"),
           quantity,
           destination: body.destination?.trim() || null,
           operatorName: body.operatorName?.trim() || null,
@@ -215,6 +200,7 @@ export async function POST(request: NextRequest) {
       if (!quantity || !reason) return NextResponse.json({ success: false, error: "Quantity and return reason are required" }, { status: 400 });
       const outwardId = body.outwardId ? Number(body.outwardId) : null;
       const cisId = body.cisId ? Number(body.cisId) : null;
+      const addToInventory = body.addToInventory === true || body.addToInventory === "true" || body.addToInventory === 1 ? 1 : 0;
 
       const result = await db.transaction(async (tx) => {
         if (outwardId && Number.isInteger(outwardId)) {
@@ -236,8 +222,13 @@ export async function POST(request: NextRequest) {
           cisId: Number.isInteger(cisId) ? cisId : null,
           quantity,
           reason,
+          batchNumber: body.batchNumber?.trim() || null,
+          supplier: body.supplier?.trim() || null,
+          inwardNumber: body.inwardNumber?.trim() || null,
+          qualityGrade: body.qualityGrade?.trim() || null,
           operatorName: body.operatorName?.trim() || null,
           remarks: body.remarks?.trim() || null,
+          addToInventory,
         }).returning();
         return { record };
       });

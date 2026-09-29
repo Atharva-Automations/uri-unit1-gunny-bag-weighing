@@ -417,19 +417,24 @@ function LiveWeighingContent() {
       )}
 
       {/* Live weight display */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center">
-        <p className="text-sm text-slate-500 uppercase tracking-wider font-medium">
-          Live Weight
-        </p>
-        <p
-          className={`mt-2 font-mono font-bold text-7xl ${
-            weight > 0 ? "text-[#1e3a5f]" : "text-slate-300"
-          }`}
-        >
-          {weight.toFixed(3)}
-        </p>
-        <p className="text-base text-slate-500 mt-1">kg</p>
-        <div className="mt-3 flex items-center justify-center gap-2 text-xs">
+      <div className="rounded-[26px] border border-blue-900/60 bg-gradient-to-br from-[#0d4fc0] via-[#0c4db2] to-[#0a2d7d] p-4 shadow-[inset_0_2px_10px_rgba(255,255,255,0.18),0_12px_24px_rgba(17,29,75,0.18)]">
+        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-100/85">
+          <span>Weight</span>
+          <span className="text-blue-200/70">kg</span>
+        </div>
+
+        <div className="mt-3 rounded-[18px] border border-blue-200/30 bg-[#0b2f89] px-4 py-3 shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]">
+          <div className="font-mono text-center font-black leading-none tracking-[-0.08em] text-red-500 drop-shadow-[0_0_12px_rgba(255,65,65,0.55)] text-[clamp(2.8rem,7vw,8rem)]">
+            {weight.toFixed(3).padStart(6, "0")}
+          </div>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between text-[9px] uppercase tracking-[0.18em] text-blue-100/70">
+          <span>Min</span>
+          <span>Max</span>
+        </div>
+
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs">
           <span
             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full ${
               stable
@@ -445,7 +450,7 @@ function LiveWeighingContent() {
             {stable ? "Stable for 5 seconds" : "Waiting for 5 seconds of stable weight…"}
           </span>
           {reading && (
-            <span className="text-slate-400">
+            <span className="text-slate-300">
               {reading.source === "mock" ? "mock" : "scale"} •{" "}
               {new Date(reading.at).toLocaleTimeString("en-IN")}
             </span>

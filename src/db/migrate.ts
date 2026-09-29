@@ -110,6 +110,9 @@ async function pushSchemaRaw(pool: Pool) {
         dispatched_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
 
+      ALTER TABLE compound_outwards
+        ALTER COLUMN label_code DROP NOT NULL;
+
       CREATE TABLE IF NOT EXISTS compound_returns (
         id SERIAL PRIMARY KEY,
         part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
@@ -117,8 +120,13 @@ async function pushSchemaRaw(pool: Pool) {
         cis_id INTEGER REFERENCES compound_cis(id) ON DELETE SET NULL,
         quantity INTEGER NOT NULL CHECK (quantity > 0),
         reason VARCHAR(500) NOT NULL,
+        batch_number VARCHAR(100),
+        supplier VARCHAR(200),
+        inward_number VARCHAR(60),
+        quality_grade VARCHAR(100),
         operator_name VARCHAR(200),
         remarks TEXT,
+        add_to_inventory INTEGER NOT NULL DEFAULT 1,
         returned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
 
@@ -126,6 +134,25 @@ async function pushSchemaRaw(pool: Pool) {
       CREATE INDEX IF NOT EXISTS idx_compound_cis_part_id ON compound_cis(part_id);
       CREATE INDEX IF NOT EXISTS idx_compound_outwards_part_id ON compound_outwards(part_id);
       CREATE INDEX IF NOT EXISTS idx_compound_returns_part_id ON compound_returns(part_id);
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'compound_returns' AND column_name = 'batch_number') THEN
+          ALTER TABLE compound_returns ADD COLUMN batch_number VARCHAR(100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'compound_returns' AND column_name = 'supplier') THEN
+          ALTER TABLE compound_returns ADD COLUMN supplier VARCHAR(200);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'compound_returns' AND column_name = 'inward_number') THEN
+          ALTER TABLE compound_returns ADD COLUMN inward_number VARCHAR(60);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'compound_returns' AND column_name = 'quality_grade') THEN
+          ALTER TABLE compound_returns ADD COLUMN quality_grade VARCHAR(100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'compound_returns' AND column_name = 'add_to_inventory') THEN
+          ALTER TABLE compound_returns ADD COLUMN add_to_inventory INTEGER NOT NULL DEFAULT 1;
+        END IF;
+      END $$;
     `);
 
     // Migrate existing parts table: replace max_bag_weight with actual_weight

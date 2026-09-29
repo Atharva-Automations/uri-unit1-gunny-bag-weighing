@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { compoundInwards, compoundCis, compoundOutwards, parts } from "@/db/schema";
+import { compoundInwards, compoundCis, parts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { tscPrinterClient, getPrinter } from "@/utils/printer";
 import { cleanLabelText, LABEL } from "@/utils/label";
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  *  ┌──────────────────────── 800 dots (100 mm) ─────────────────────────┐
  *  │         UNITED RUBBER INDUSTRIES                                    │
  *  │ ─────────────────────────────────────────────────────────────────  │
- *  │  ┌────────┐ │  INWARD RECEIPT / CIS ISSUE / OUTWARD DISPATCH       │
+ *  │  ┌────────┐ │  INWARD RECEIPT / CIS ISSUE                         │
  *  │  │        │ │  Ref No.   : INW-20260910-ABCDE                      │ 400 dots
  *  │  │   QR   │ │  Part No.  : PN-0001  Black Rubber Sheet             │ (50 mm)
  *  │  │        │ │  Qty       : 500 pcs                                 │
@@ -31,7 +31,7 @@ function formatDate(d: Date | string) {
 }
 
 function buildCompoundTSPL(params: {
-  type: "INWARD RECEIPT" | "CIS ISSUE" | "OUTWARD DISPATCH";
+  type: "INWARD RECEIPT" | "CIS ISSUE";
   labelCode: string;
   refNumber: string;
   partNumber: string;
@@ -174,36 +174,8 @@ export async function POST(request: NextRequest) {
         line2: row.record.operatorName ? `Operator  : ${row.record.operatorName}` : undefined,
         line3: row.record.remarks ? `Remarks   : ${row.record.remarks}` : undefined,
       });
-    } else if (type === "outward") {
-      const [row] = await db
-        .select({
-          record: compoundOutwards,
-          partNumber: parts.partNumber,
-          description: parts.description,
-          cisNumber: compoundCis.cisNumber,
-        })
-        .from(compoundOutwards)
-        .innerJoin(parts, eq(parts.id, compoundOutwards.partId))
-        .innerJoin(compoundCis, eq(compoundCis.id, compoundOutwards.cisId))
-        .where(eq(compoundOutwards.id, Number(id)));
-
-      if (!row) return NextResponse.json({ success: false, error: "Outward record not found" }, { status: 404 });
-      refNumber = row.record.outwardNumber;
-
-      tspl = buildCompoundTSPL({
-        type: "OUTWARD DISPATCH",
-        labelCode: row.record.labelCode,
-        refNumber,
-        partNumber: row.partNumber,
-        description: row.description,
-        quantity: row.record.quantity,
-        date: formatDate(row.record.dispatchedAt),
-        line1: `From CIS  : ${row.cisNumber}`,
-        line2: row.record.destination ? `Dest      : ${row.record.destination}` : undefined,
-        line3: row.record.operatorName ? `Operator  : ${row.record.operatorName}` : undefined,
-      });
     } else {
-      return NextResponse.json({ success: false, error: "type must be inward, cis, or outward" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "type must be inward or cis" }, { status: 400 });
     }
 
     await tscPrinterClient.send(printer.ip, printer.port, tspl);

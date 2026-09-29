@@ -105,12 +105,19 @@
       "Bash(taskkill /F /IM node.exe)",
       "Bash(node -e \"require\\('./node_modules/pdfkit'\\)\")",
       "Bash(npm list *)",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(taskkill /PID 21820 /F)",
+      "Bash(cmd.exe /c taskkill /PID 21820 /F)",
+      "Bash(netstat -ano)",
+      "Bash(rm -rf .next)",
+      "Bash(curl -I http://localhost:3001)",
+      "Bash(curl -I http://localhost:3002)"
     ],
     "additionalDirectories": [
       "C:\\Program Files\\PostgreSQL\\18\\data",
       "\\tmp",
-      "C:\\Gunny_bag_weighing\\.git"
+      "C:\\Gunny_bag_weighing\\.git",
+      "C:\\Gunny_bag_weighing\\.next"
     ]
   }
 }

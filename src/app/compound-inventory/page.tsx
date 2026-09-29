@@ -70,7 +70,7 @@ type Cis = {
 type Outward = {
   id: number;
   outwardNumber: string;
-  labelCode: string;
+  labelCode: string | null;
   quantity: number;
   cisId: number;
   cisNumber: string;
@@ -89,6 +89,7 @@ type ReturnRecord = {
   partId: number;
   partNumber: string;
   returnedAt: string;
+  addToInventory: number;
 };
 type Data = {
   dashboard: DashboardRow[];
@@ -113,6 +114,9 @@ const initialForm = {
   destination: "",
   reason: "",
   outwardId: "",
+  qualityGrade: "",
+  inwardNumber: "",
+  addToInventory: true,
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -247,6 +251,30 @@ function Select({
   );
 }
 
+function Checkbox({
+  label: text,
+  name,
+  checked,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  checked: boolean;
+  onChange: (name: string, value: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(name, e.target.checked)}
+        className="w-4 h-4 rounded border-slate-300 text-[#17324d] focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+      />
+      <span className="text-sm text-slate-700">{text}</span>
+    </label>
+  );
+}
+
 // ─── Print button ─────────────────────────────────────────────────────────
 
 function PrintBtn({
@@ -369,8 +397,11 @@ export default function CompoundInventoryPage({
     if (initialPartId) change("partId", initialPartId);
   }, [initialInwardId, initialCisId, initialPartId]);
 
-  function change(name: string, value: string) {
-    setForm((cur) => ({ ...cur, [name]: value }));
+  function change(name: string, value: string | boolean) {
+    setForm((cur) => ({
+      ...cur,
+      [name]: value,
+    } as typeof cur));
   }
 
   async function save(event: FormEvent, action: string) {
@@ -546,8 +577,6 @@ export default function CompoundInventoryPage({
             change={change}
             save={save}
             saving={saving}
-            printing={printing}
-            onPrint={printLabel}
           />
         )}
         {tab === "returns" && (
@@ -709,7 +738,7 @@ function Dashboard({
 interface ViewProps {
   data: Data;
   form: typeof initialForm;
-  change: (k: string, v: string) => void;
+  change: (k: string, v: string | boolean) => void;
   save: (e: FormEvent, action: string) => void;
   saving: boolean;
   printing: string | null;
@@ -987,7 +1016,7 @@ function CisTable({
 
 // ─── Outward View ─────────────────────────────────────────────────────────
 
-function OutwardView({ data, form, change, save, saving, printing, onPrint }: Omit<ViewProps, "lastCreated">) {
+function OutwardView({ data, form, change, save, saving }: Omit<ViewProps, "lastCreated" | "printing" | "onPrint">) {
   const available = (row: Cis) =>
     row.quantity -
     data.outwards
@@ -1005,7 +1034,7 @@ function OutwardView({ data, form, change, save, saving, printing, onPrint }: Om
             </div>
             <div>
               <h3 className="font-bold text-[#17324d]">Create Outward</h3>
-              <p className="text-xs text-slate-500">Dispatch CIS material and generate the outward label.</p>
+              <p className="text-xs text-slate-500">Dispatch CIS material.</p>
             </div>
           </div>
         </div>
@@ -1036,25 +1065,21 @@ function OutwardView({ data, form, change, save, saving, printing, onPrint }: Om
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#17324d] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#234c70] disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-            {saving ? "Saving…" : "Create Outward + Label"}
+            {saving ? "Saving…" : "Create Outward"}
           </button>
         </form>
       </section>
 
       {/* ── Records table ── */}
-      <OutwardTable records={data.outwards} printing={printing} onPrint={onPrint} />
+      <OutwardTable records={data.outwards} />
     </div>
   );
 }
 
 function OutwardTable({
   records,
-  printing,
-  onPrint,
 }: {
   records: Data["outwards"];
-  printing: string | null;
-  onPrint: (type: "inward" | "cis" | "outward", id: number) => void;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -1075,14 +1100,12 @@ function OutwardTable({
               <th className="px-4 py-3">From CIS</th>
               <th className="px-4 py-3">Destination</th>
               <th className="px-4 py-3">Dispatched</th>
-              <th className="px-4 py-3">Label</th>
-              <th className="px-4 py-3 text-center">Print</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {records.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
                   No outward records yet. Scan a CIS label to begin.
                 </td>
               </tr>
@@ -1098,10 +1121,6 @@ function OutwardTable({
                 <td className="px-4 py-3 font-mono text-xs text-slate-600">{cisNumber}</td>
                 <td className="px-4 py-3 text-slate-600">{row.destination || <span className="text-slate-300">—</span>}</td>
                 <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{fmtDate(row.dispatchedAt)}</td>
-                <td className="px-4 py-3"><LabelBadge code={row.labelCode} /></td>
-                <td className="px-4 py-3 text-center">
-                  <PrintBtn type="outward" id={row.id} printing={printing} onPrint={onPrint} />
-                </td>
               </tr>
             ))}
           </tbody>
@@ -1170,6 +1189,14 @@ function ReturnsView({
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Quantity" name="quantity" value={form.quantity} onChange={change} type="number" required />
+            <Field label="Quality Grade" name="qualityGrade" value={form.qualityGrade} onChange={change} placeholder="Optional" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Inward Number" name="inwardNumber" value={form.inwardNumber} onChange={change} placeholder="Optional" />
+            <Field label="Batch Number" name="batchNumber" value={form.batchNumber} onChange={change} placeholder="Optional" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Supplier" name="supplier" value={form.supplier} onChange={change} placeholder="Optional" />
             <Field label="Operator" name="operatorName" value={form.operatorName} onChange={change} placeholder="Optional" />
           </div>
           <Field
@@ -1179,6 +1206,12 @@ function ReturnsView({
             onChange={change}
             required
             placeholder="Quality issue, excess material, damage…"
+          />
+          <Checkbox
+            label="Add returned quantity back to available inventory"
+            name="addToInventory"
+            checked={Boolean(form.addToInventory)}
+            onChange={(name, value) => change(name, value)}
           />
           <Field label="Remarks" name="remarks" value={form.remarks} onChange={change} placeholder="Optional" />
           <button
@@ -1207,13 +1240,14 @@ function ReturnsView({
                 <th className="px-4 py-3">Part</th>
                 <th className="px-4 py-3 text-right">Qty</th>
                 <th className="px-4 py-3">Reason</th>
+                <th className="px-4 py-3">Add to Inventory</th>
                 <th className="px-4 py-3">Returned</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {data.returns.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
                     No returns recorded yet.
                   </td>
                 </tr>
@@ -1225,6 +1259,15 @@ function ReturnsView({
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold text-rose-700">{row.quantity}</td>
                   <td className="px-4 py-3 text-slate-600">{row.reason}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs font-semibold ring-1 ${
+                      row.addToInventory
+                        ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                        : "bg-rose-50 text-rose-800 ring-rose-200"
+                    }`}>
+                      {row.addToInventory ? "Yes" : "No"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{fmtDate(row.returnedAt)}</td>
                 </tr>
               ))}

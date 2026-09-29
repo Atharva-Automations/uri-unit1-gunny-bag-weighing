@@ -4,52 +4,41 @@ import { useEffect, useState } from "react";
 import MainLayout from "@/components/MainLayout";
 import {
   AlertCircle,
-  Filter,
+  Download,
   Loader2,
   Package,
   RefreshCw,
   Search,
-  Weight,
   X,
 } from "lucide-react";
 
-interface Part {
+interface InventoryItem {
   id: number;
   partNumber: string;
   description: string;
-  minWeight: string;
-  maxWeight: string;
-  quantity: number;
-  actualWeight: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-function formatWeight(value: string) {
-  const weight = Number.parseFloat(value);
-  return Number.isFinite(weight) ? weight.toFixed(3) : "0.000";
+  baseQuantity: number;
+  totalInwards: number;
+  totalOutwards: number;
+  totalReturns: number;
+  avlQuantity: number;
 }
 
 export default function InventoryPage() {
-  const [parts, setParts] = useState<Part[]>([]);
+  const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [minQuantity, setMinQuantity] = useState("");
-  const [maxQuantity, setMaxQuantity] = useState("");
-  const [minWeight, setMinWeight] = useState("");
-  const [maxWeight, setMaxWeight] = useState("");
 
-  async function loadParts() {
+  async function loadInventory() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/parts");
+      const response = await fetch("/api/inventory");
       const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Failed to load inventory");
       }
-      setParts(data.data);
+      setItems(data.data);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load inventory");
     } finally {
@@ -60,16 +49,16 @@ export default function InventoryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/parts")
+    fetch("/api/inventory")
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data.error || "Failed to load inventory");
         }
-        return data.data as Part[];
+        return data.data as InventoryItem[];
       })
       .then((data) => {
-        if (!cancelled) setParts(data);
+        if (!cancelled) setItems(data);
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
@@ -86,42 +75,34 @@ export default function InventoryPage() {
   }, []);
 
   const normalizedSearch = search.trim().toLowerCase();
-  const filteredParts = parts.filter((part) => {
+  const filteredItems = items.filter((item) => {
     const matchesSearch =
       !normalizedSearch ||
-      part.partNumber.toLowerCase().includes(normalizedSearch) ||
-      part.description.toLowerCase().includes(normalizedSearch);
-    const matchesMinQuantity = !minQuantity || part.quantity >= Number(minQuantity);
-    const matchesMaxQuantity = !maxQuantity || part.quantity <= Number(maxQuantity);
-    const partMinWeight = Number.parseFloat(part.minWeight);
-    const partMaxWeight = Number.parseFloat(part.maxWeight);
-    const matchesMinWeight = !minWeight || partMaxWeight >= Number(minWeight);
-    const matchesMaxWeight = !maxWeight || partMinWeight <= Number(maxWeight);
-
-    return (
-      matchesSearch &&
-      matchesMinQuantity &&
-      matchesMaxQuantity &&
-      matchesMinWeight &&
-      matchesMaxWeight
-    );
+      item.partNumber.toLowerCase().includes(normalizedSearch) ||
+      item.description.toLowerCase().includes(normalizedSearch);
+    return matchesSearch;
   });
 
-  const totalQuantity = filteredParts.reduce((sum, part) => sum + part.quantity, 0);
-  const hasFilters = Boolean(search || minQuantity || maxQuantity || minWeight || maxWeight);
+  const totalAvlQuantity = filteredItems.reduce((sum, item) => sum + item.avlQuantity, 0);
+  const hasSearch = Boolean(search);
 
-  function clearFilters() {
+  function clearSearch() {
     setSearch("");
-    setMinQuantity("");
-    setMaxQuantity("");
-    setMinWeight("");
-    setMaxWeight("");
+  }
+
+  function downloadPDF(partId: number, partNumber: string) {
+    const a = document.createElement("a");
+    a.href = `/api/inventory/pdf?partId=${partId}`;
+    a.download = `inventory-${partNumber}-${new Date().toISOString().split("T")[0]}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   return (
     <MainLayout
       title="Inventory"
-      subtitle="Browse parts currently available in the inventory"
+      subtitle="Real-time available quantity based on compound inventory movements"
     >
       <div className="space-y-6">
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -130,25 +111,25 @@ export default function InventoryPage() {
               <Package className="w-5 h-5 text-[#1e3a5f]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-800">{filteredParts.length}</p>
+              <p className="text-2xl font-bold text-slate-800">{filteredItems.length}</p>
               <p className="text-sm text-slate-500">Parts shown</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-lg bg-amber-50 flex items-center justify-center">
-              <Weight className="w-5 h-5 text-amber-600" />
+            <div className="w-11 h-11 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <Download className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-800">{totalQuantity.toLocaleString()}</p>
-              <p className="text-sm text-slate-500">Total pieces shown</p>
+              <p className="text-2xl font-bold text-slate-800">{totalAvlQuantity.toLocaleString()}</p>
+              <p className="text-sm text-slate-500">Total available quantity</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <Filter className="w-5 h-5 text-emerald-600" />
+            <div className="w-11 h-11 rounded-lg bg-amber-50 flex items-center justify-center">
+              <Search className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-800">{hasFilters ? "Active" : "All"}</p>
+              <p className="text-2xl font-bold text-slate-800">{hasSearch ? "Filtered" : "All"}</p>
               <p className="text-sm text-slate-500">Inventory view</p>
             </div>
           </div>
@@ -171,22 +152,14 @@ export default function InventoryPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FilterInput label="Min quantity" value={minQuantity} onChange={setMinQuantity} />
-              <FilterInput label="Max quantity" value={maxQuantity} onChange={setMaxQuantity} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FilterInput label="Min weight (kg)" value={minWeight} onChange={setMinWeight} step="0.001" />
-              <FilterInput label="Max weight (kg)" value={maxWeight} onChange={setMaxWeight} step="0.001" />
-            </div>
-            {hasFilters && (
+            {hasSearch && (
               <button
                 type="button"
-                onClick={clearFilters}
+                onClick={clearSearch}
                 className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap"
               >
                 <X className="w-4 h-4" />
-                Clear filters
+                Clear search
               </button>
             )}
           </div>
@@ -195,14 +168,14 @@ export default function InventoryPage() {
         <section className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-slate-800">Available parts</h3>
+              <h3 className="font-semibold text-slate-800">Available Inventory</h3>
               <p className="text-xs text-slate-500 mt-1">
-                {loading ? "Loading inventory..." : `${filteredParts.length} of ${parts.length} part${parts.length === 1 ? "" : "s"}`}
+                {loading ? "Loading inventory..." : `${filteredItems.length} of ${items.length} part${items.length === 1 ? "" : "s"}`}
               </p>
             </div>
             <button
               type="button"
-              onClick={loadParts}
+              onClick={loadInventory}
               disabled={loading}
               title="Refresh inventory"
               className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-[#1e3a5f] transition-colors disabled:opacity-50"
@@ -222,87 +195,65 @@ export default function InventoryPage() {
               <p className="text-sm text-slate-500 mt-1">{error}</p>
               <button
                 type="button"
-                onClick={loadParts}
+                onClick={loadInventory}
                 className="mt-4 px-4 py-2 bg-[#1e3a5f] text-white rounded-lg text-sm font-medium hover:bg-[#2d5a8e] transition-colors"
               >
                 Try again
               </button>
             </div>
-          ) : filteredParts.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <div className="py-14 text-center text-slate-400">
               <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p className="font-medium text-slate-600">No matching parts found</p>
-              <p className="text-sm mt-1">Adjust the filters to broaden your search.</p>
+              <p className="text-sm mt-1">Adjust the search to broaden your results.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Part number</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Part Number</th>
                     <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Description</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Quantity</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Actual weight</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Allowed range</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Max bag weight</th>
+                    <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Avl Quantity</th>
+                    <th className="text-center px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredParts.map((part) => (
-                    <tr key={part.id} className="hover:bg-blue-50/40 transition-colors">
+                  {filteredItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-emerald-50/40 transition-colors">
                       <td className="px-5 py-4">
                         <span className="font-mono font-bold text-[#1e3a5f] bg-blue-50 px-2 py-1 rounded text-xs">
-                          {part.partNumber}
+                          {item.partNumber}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-slate-700 max-w-xs">
-                        <p className="truncate" title={part.description}>{part.description}</p>
+                        <p className="truncate" title={item.description}>{item.description}</p>
                       </td>
-                      <td className="px-5 py-4 text-right font-semibold text-slate-700">{part.quantity.toLocaleString()}</td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-700">{formatWeight(part.actualWeight)} kg</td>
-                      <td className="px-5 py-4 text-right text-slate-600 whitespace-nowrap">
-                        {formatWeight(part.minWeight)} - {formatWeight(part.maxWeight)} kg
+                      <td className="px-5 py-4 text-right font-bold text-emerald-700 text-lg tabular-nums">
+                        {item.avlQuantity.toLocaleString()}
                       </td>
-                      <td className="px-5 py-4 text-right font-semibold text-amber-600">
-                        {(Number.parseFloat(part.maxWeight) * part.quantity).toFixed(3)} kg
+                      <td className="px-5 py-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => downloadPDF(item.id, item.partNumber)}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                          title="Download PDF report"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          PDF
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-400">
-                Inventory data is read-only. Manage part records from Master List.
+                Avl Quantity = Base Quantity + Inwards - Outwards + Returns. Updates in real-time.
               </div>
             </div>
           )}
         </section>
       </div>
     </MainLayout>
-  );
-}
-
-function FilterInput({
-  label,
-  value,
-  onChange,
-  step = "1",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  step?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{label}</label>
-      <input
-        type="number"
-        min="0"
-        step={step}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-32 max-w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/25 focus:border-[#1e3a5f]"
-      />
-    </div>
   );
 }

@@ -67,7 +67,7 @@ export const compoundOutwards = pgTable("compound_outwards", {
   cisId: integer("cis_id").notNull().references(() => compoundCis.id, { onDelete: "cascade" }),
   partId: integer("part_id").notNull().references(() => parts.id, { onDelete: "cascade" }),
   outwardNumber: varchar("outward_number", { length: 60 }).notNull().unique(),
-  labelCode: varchar("label_code", { length: 100 }).notNull().unique(),
+  labelCode: varchar("label_code", { length: 100 }).unique(),
   quantity: integer("quantity").notNull(),
   destination: varchar("destination", { length: 200 }),
   operatorName: varchar("operator_name", { length: 200 }),
@@ -82,8 +82,13 @@ export const compoundReturns = pgTable("compound_returns", {
   cisId: integer("cis_id").references(() => compoundCis.id, { onDelete: "set null" }),
   quantity: integer("quantity").notNull(),
   reason: varchar("reason", { length: 500 }).notNull(),
+  batchNumber: varchar("batch_number", { length: 100 }),
+  supplier: varchar("supplier", { length: 200 }),
+  inwardNumber: varchar("inward_number", { length: 60 }),
+  qualityGrade: varchar("quality_grade", { length: 100 }),
   operatorName: varchar("operator_name", { length: 200 }),
   remarks: text("remarks"),
+  addToInventory: integer("add_to_inventory").notNull().default(1),
   returnedAt: timestamp("returned_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
