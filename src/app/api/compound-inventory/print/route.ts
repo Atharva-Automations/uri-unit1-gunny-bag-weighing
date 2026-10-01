@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { compoundInwards, compoundCis, parts } from "@/db/schema";
+import { compoundInwards, parts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { tscPrinterClient, getPrinter } from "@/utils/printer";
-import { cleanLabelText, LABEL } from "@/utils/label";
+import { cleanLabelText, LABEL, COMPANY_NAME } from "@/utils/label";
 import QRCode from "qrcode";
 
 export const runtime = "nodejs";
@@ -13,14 +13,14 @@ export const runtime = "nodejs";
  * gunny-bag label. 203 dpi → 8 dots/mm. Width=800, Height=400 dots.
  *
  *  ┌──────────────────────── 800 dots (100 mm) ─────────────────────────┐
- *  │         UNITED RUBBER INDUSTRIES                                    │
+ *  │      UNITED RUBBER INDUSTRIES (I) PVT. LTD.                        │
  *  │ ─────────────────────────────────────────────────────────────────  │
- *  │  ┌────────┐ │  INWARD RECEIPT / CIS ISSUE                         │
+ *  │  ┌────────┐ │  INWARD RECEIPT                                      │
  *  │  │        │ │  Ref No.   : INW-20260910-ABCDE                      │ 400 dots
- *  │  │   QR   │ │  Part No.  : PN-0001  Black Rubber Sheet             │ (50 mm)
+ *  │  │   QR   │ │  Part No.  : PN-0001                                 │ (50 mm)
  *  │  │        │ │  Qty       : 500 pcs                                 │
- *  │  │        │ │  Supplier  : ABC Corp                                │
- *  │  └────────┘ │  Date      : 10-09-2026                              │
+ *  │  └────────┘ │  Supplier  : ABC Corp                                │
+ *  │             │  Date      : 10-09-2026                              │
  *  └────────────────────────────────────────────────────────────────────┘
  */
 
@@ -31,18 +31,17 @@ function formatDate(d: Date | string) {
 }
 
 function buildCompoundTSPL(params: {
-  type: "INWARD RECEIPT" | "CIS ISSUE";
+  type: "INWARD RECEIPT";
   labelCode: string;
   refNumber: string;
   partNumber: string;
-  description: string;
   quantity: number;
   date: string;
   line1: string;
   line2?: string;
   line3?: string;
 }): string {
-  const { type, labelCode, refNumber, partNumber, description, quantity, date, line1, line2, line3 } = params;
+  const { type, labelCode, refNumber, partNumber, quantity, date, line1, line2, line3 } = params;
   const clean = (s: string) => cleanLabelText(s).replace(/"/g, "'");
 
   // ── QR code encodes the label code for scanning ───────────────────
@@ -66,7 +65,7 @@ function buildCompoundTSPL(params: {
   const fmt = (s: string) => clean(s).slice(0, maxChars);
 
   // Company header — same as master label
-  const companyText = "UNITED RUBBER INDUSTRIES";
+  const companyText = COMPANY_NAME;
   const headerX = Math.floor((LABEL.width - companyText.length * LABEL.textCharWidth) / 2);
 
   const rows = [
@@ -126,12 +125,13 @@ export async function POST(request: NextRequest) {
 
     if (type === "inward") {
       const [row] = await db
-        .select({ record: compoundInwards, partNumber: parts.partNumber, description: parts.description })
+        .select({ record: compoundInwards, partNumber: parts.partNumber })
         .from(compoundInwards)
         .innerJoin(parts, eq(parts.id, compoundInwards.partId))
         .where(eq(compoundInwards.id, Number(id)));
 
-      if (!row) return NextResponse.json({ success: false, error: "Inward record not found" }, { status: 404 });
+      if (!row)
+        return NextResponse.json({ success: false, error: "Inward record not found" }, { status: 404 });
       refNumber = row.record.inwardNumber;
 
       tspl = buildCompoundTSPL({
@@ -139,42 +139,14 @@ export async function POST(request: NextRequest) {
         labelCode: row.record.labelCode,
         refNumber,
         partNumber: row.partNumber,
-        description: row.description,
         quantity: row.record.quantity,
         date: formatDate(row.record.receivedAt),
         line1: `Supplier  : ${row.record.supplier || "—"}`,
         line2: row.record.batchNumber ? `Batch     : ${row.record.batchNumber}` : undefined,
         line3: row.record.operatorName ? `Operator  : ${row.record.operatorName}` : undefined,
       });
-    } else if (type === "cis") {
-      const [row] = await db
-        .select({
-          record: compoundCis,
-          partNumber: parts.partNumber,
-          description: parts.description,
-          inwardNumber: compoundInwards.inwardNumber,
-        })
-        .from(compoundCis)
-        .innerJoin(parts, eq(parts.id, compoundCis.partId))
-        .innerJoin(compoundInwards, eq(compoundInwards.id, compoundCis.inwardId))
-        .where(eq(compoundCis.id, Number(id)));
-
-      if (!row) return NextResponse.json({ success: false, error: "CIS record not found" }, { status: 404 });
-      refNumber = row.record.cisNumber;
-
-      tspl = buildCompoundTSPL({
-        type: "CIS ISSUE",
-        labelCode: row.record.labelCode,
-        refNumber,
-        partNumber: row.partNumber,
-        description: row.description,
-        quantity: row.record.quantity,
-        date: formatDate(row.record.createdAt),
-        line1: `From Inwd : ${row.inwardNumber}`,
-        line2: row.record.operatorName ? `Operator  : ${row.record.operatorName}` : undefined,
-      });
     } else {
-      return NextResponse.json({ success: false, error: "type must be inward or cis" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "type must be inward" }, { status: 400 });
     }
 
     await tscPrinterClient.send(printer.ip, printer.port, tspl);

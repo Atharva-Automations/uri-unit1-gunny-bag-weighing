@@ -4,7 +4,6 @@ type CompoundInventoryData = {
   partNumber: string;
   description: string;
   totalInwards: number;
-  totalIssued: number;
   totalOutwards: number;
   totalReturns: number;
 };
@@ -25,8 +24,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
 
       const pageWidth = doc.page.width - 100;
       const leftMargin = 50;
-      const inwardBal = data.totalInwards - data.totalIssued;
-      const cisBal = data.totalIssued - data.totalOutwards + data.totalReturns;
+      const inwardBal = data.totalInwards + data.totalReturns - data.totalOutwards;
 
       // === HEADER SECTION ===
       const headerHeight = 120;
@@ -44,8 +42,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
         .stroke();
 
       // Icon lines inside
-      doc.strokeColor("white")
-        .lineWidth(2.5);
+      doc.strokeColor("white").lineWidth(2.5);
       for (let i = 0; i < 3; i++) {
         const y = headerY + 50 + (i * 12);
         const width = i === 2 ? 25 : 35;
@@ -160,7 +157,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       const tableStartY = yPos;
 
       // Table border
-      doc.roundedRect(leftMargin + 10, tableStartY, tableWidth, 295, 10)
+      doc.roundedRect(leftMargin + 10, tableStartY, tableWidth, 255, 10)
         .lineWidth(1)
         .strokeColor("#e2e8f0")
         .stroke();
@@ -184,7 +181,6 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       const rowHeight = 38;
       const transactions = [
         { label: "Total Inwards", qty: data.totalInwards, balance: "—" },
-        { label: "Total Issued (CIS)", qty: data.totalIssued, balance: "—" },
         { label: "Total Outwards", qty: data.totalOutwards, balance: "—" },
         { label: "Total Returns", qty: data.totalReturns, balance: "—" },
       ];
@@ -226,8 +222,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
 
       // Balance rows
       const balances = [
-        { label: "Inward Balance", balance: inwardBal, color: "#3b82f6" },
-        { label: "CIS Balance", balance: cisBal, color: "#10b981" },
+        { label: "Available Quantity", balance: inwardBal, color: "#10b981" },
       ];
 
       balances.forEach((bal) => {
@@ -273,7 +268,7 @@ export async function generateCompoundInventoryPDF(data: CompoundInventoryData):
       doc.fillColor("#94a3b8")
         .fontSize(10)
         .font("Helvetica-Oblique");
-      doc.text("All quantities are presented in unit count.", leftMargin + 90, yPos + 2, { lineBreak: false });
+      doc.text("Available = Inwards + Returns - Outwards. All quantities are in unit count.", leftMargin + 95, yPos + 2, { lineBreak: false });
 
       doc.end();
     } catch (error) {

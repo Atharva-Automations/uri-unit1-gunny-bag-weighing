@@ -50,21 +50,9 @@ export const compoundInwards = pgTable("compound_inwards", {
   receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const compoundCis = pgTable("compound_cis", {
-  id: serial("id").primaryKey(),
-  inwardId: integer("inward_id").notNull().references(() => compoundInwards.id, { onDelete: "cascade" }),
-  partId: integer("part_id").notNull().references(() => parts.id, { onDelete: "cascade" }),
-  cisNumber: varchar("cis_number", { length: 60 }).notNull().unique(),
-  labelCode: varchar("label_code", { length: 100 }).notNull().unique(),
-  quantity: integer("quantity").notNull(),
-  operatorName: varchar("operator_name", { length: 200 }),
-  remarks: text("remarks"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
 export const compoundOutwards = pgTable("compound_outwards", {
   id: serial("id").primaryKey(),
-  cisId: integer("cis_id").notNull().references(() => compoundCis.id, { onDelete: "cascade" }),
+  inwardId: integer("inward_id").references(() => compoundInwards.id, { onDelete: "cascade" }),
   partId: integer("part_id").notNull().references(() => parts.id, { onDelete: "cascade" }),
   outwardNumber: varchar("outward_number", { length: 60 }).notNull().unique(),
   labelCode: varchar("label_code", { length: 100 }).unique(),
@@ -79,7 +67,7 @@ export const compoundReturns = pgTable("compound_returns", {
   id: serial("id").primaryKey(),
   partId: integer("part_id").notNull().references(() => parts.id, { onDelete: "cascade" }),
   outwardId: integer("outward_id").references(() => compoundOutwards.id, { onDelete: "set null" }),
-  cisId: integer("cis_id").references(() => compoundCis.id, { onDelete: "set null" }),
+  inwardId: integer("inward_id").references(() => compoundInwards.id, { onDelete: "set null" }),
   quantity: integer("quantity").notNull(),
   reason: varchar("reason", { length: 500 }).notNull(),
   batchNumber: varchar("batch_number", { length: 100 }),
@@ -97,6 +85,5 @@ export type NewPart = typeof parts.$inferInsert;
 export type WeighingHistory = typeof weighingHistory.$inferSelect;
 export type NewWeighingHistory = typeof weighingHistory.$inferInsert;
 export type CompoundInward = typeof compoundInwards.$inferSelect;
-export type CompoundCis = typeof compoundCis.$inferSelect;
 export type CompoundOutward = typeof compoundOutwards.$inferSelect;
 export type CompoundReturn = typeof compoundReturns.$inferSelect;

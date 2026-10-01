@@ -69,7 +69,10 @@ export async function GET(request: NextRequest) {
             partIds.length === 1
               ? eq(weighingHistory.partId, partIds[0])
               : inArray(weighingHistory.partId, partIds),
-            inArray(weighingHistory.status, ["OK", "OVERWEIGHT"])
+            // Only "OK" weighings add to inventory. UNDERWEIGHT and OVERWEIGHT
+            // transactions are recorded for audit but never create or update an
+            // inventory entry.
+            eq(weighingHistory.status, "OK")
           )
         )
         .groupBy(weighingHistory.partId),

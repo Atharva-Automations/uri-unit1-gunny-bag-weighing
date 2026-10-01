@@ -30,11 +30,19 @@ export const cleanLabelText = (value: string) =>
   value.replace(/[\x00-\x1f\x7f-￿]/g, " ").replace(/"/g, "'");
 
 /**
+ * Company name printed on the label header. TSPL font 2 renders 12 dots per
+ * character at 1x scale, so the 40-character legal name needs 480 dots. The
+ * usable inner width is borderRight - borderLeft = 748 dots, so the full name
+ * fits on one centred line without overlapping the border or the rule below.
+ */
+export const COMPANY_NAME = "UNITED RUBBER INDUSTRIES (I) PVT. LTD.";
+
+/**
  * Build the QR + text artwork for a 50x100mm portrait label. Layout:
  *
  *   ┌──────────────────── 400 dots (50mm) ────────────────────┐
- *   │         UNITED  RUBBER  INDUSTRIES                        │  30
- *   │  ─────────────────────────────────────────────────────    │  70
+ *   │  UNITED RUBBER INDUSTRIES (I) PVT. LTD.                 │  42
+ *   │  ─────────────────────────────────────────────────────    │  82
  *   │  ┌──────────┐                                             │
  *   │  │   QR     │  Part No.        : PN-0001                  │ 100
  *   │  │  150     │  Qty/Bag         : 100 pcs                 │ 130

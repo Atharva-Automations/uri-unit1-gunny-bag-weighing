@@ -7,7 +7,7 @@ import {
   compoundOutwards,
   compoundReturns,
 } from "@/db/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { generateInventoryPDF } from "@/utils/inventoryPdf";
 
 export const runtime = "nodejs";
@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(weighingHistory.partId, id),
-            inArray(weighingHistory.status, ["OK", "OVERWEIGHT"])
+            // Only "OK" weighings count towards inventory; overweight
+            // transactions are audit-only.
+            eq(weighingHistory.status, "OK")
           )
         ),
     ]);

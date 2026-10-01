@@ -85,21 +85,9 @@ async function pushSchemaRaw(pool: Pool) {
         received_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
 
-      CREATE TABLE IF NOT EXISTS compound_cis (
-        id SERIAL PRIMARY KEY,
-        inward_id INTEGER NOT NULL REFERENCES compound_inwards(id) ON DELETE CASCADE,
-        part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
-        cis_number VARCHAR(60) NOT NULL UNIQUE,
-        label_code VARCHAR(100) NOT NULL UNIQUE,
-        quantity INTEGER NOT NULL CHECK (quantity > 0),
-        operator_name VARCHAR(200),
-        remarks TEXT,
-        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-      );
-
       CREATE TABLE IF NOT EXISTS compound_outwards (
         id SERIAL PRIMARY KEY,
-        cis_id INTEGER NOT NULL REFERENCES compound_cis(id) ON DELETE CASCADE,
+        inward_id INTEGER REFERENCES compound_inwards(id) ON DELETE CASCADE,
         part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
         outward_number VARCHAR(60) NOT NULL UNIQUE,
         label_code VARCHAR(100) NOT NULL UNIQUE,
@@ -117,7 +105,7 @@ async function pushSchemaRaw(pool: Pool) {
         id SERIAL PRIMARY KEY,
         part_id INTEGER NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
         outward_id INTEGER REFERENCES compound_outwards(id) ON DELETE SET NULL,
-        cis_id INTEGER REFERENCES compound_cis(id) ON DELETE SET NULL,
+        inward_id INTEGER REFERENCES compound_inwards(id) ON DELETE SET NULL,
         quantity INTEGER NOT NULL CHECK (quantity > 0),
         reason VARCHAR(500) NOT NULL,
         batch_number VARCHAR(100),
@@ -131,9 +119,10 @@ async function pushSchemaRaw(pool: Pool) {
       );
 
       CREATE INDEX IF NOT EXISTS idx_compound_inwards_part_id ON compound_inwards(part_id);
-      CREATE INDEX IF NOT EXISTS idx_compound_cis_part_id ON compound_cis(part_id);
       CREATE INDEX IF NOT EXISTS idx_compound_outwards_part_id ON compound_outwards(part_id);
       CREATE INDEX IF NOT EXISTS idx_compound_returns_part_id ON compound_returns(part_id);
+      -- idx_compound_outwards_inward_id is created at the end of
+      -- migrateCompoundOutwardsToInwardLink, once the column exists.
 
       DO $$
       BEGIN
@@ -198,7 +187,100 @@ async function pushSchemaRaw(pool: Pool) {
         USING (updated_at AT TIME ZONE 'Asia/Kolkata');
     `);
     console.log("[db] Timestamp columns converted to WITH TIME ZONE");
+
+    await migrateCompoundOutwardsToInwardLink(client);
   } finally {
     client.release();
   }
+}
+
+/**
+ * CIS has been removed from the workflow: outwards now link straight to the
+ * inward record. For databases created before this change we add
+ * `compound_outwards.inward_id` / `compound_returns.inward_id`, backfill them
+ * from the old `cis_id` link (through `compound_cis`), then drop the CIS
+ * columns and finally the `compound_cis` table itself.
+ */
+async function migrateCompoundOutwardsToInwardLink(client: import("pg").PoolClient) {
+  const hasTable = async (table: string) => {
+    const { rows } = await client.query<{ exists: boolean }>(
+      "SELECT to_regclass($1) IS NOT NULL AS exists",
+      [table]
+    );
+    return Boolean(rows[0]?.exists);
+  };
+  const hasColumn = async (table: string, column: string) => {
+    const { rows } = await client.query<{ exists: boolean }>(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2) AS exists",
+      [table, column]
+    );
+    return Boolean(rows[0]?.exists);
+  };
+
+  if (!(await hasTable("compound_outwards"))) return;
+
+  if (!(await hasColumn("compound_outwards", "inward_id"))) {
+    await client.query(`ALTER TABLE compound_outwards ADD COLUMN inward_id INTEGER`);
+  }
+  if (!(await hasColumn("compound_returns", "inward_id"))) {
+    await client.query(`ALTER TABLE compound_returns ADD COLUMN inward_id INTEGER`);
+  }
+
+  // Backfill the new direct inward links from the legacy CIS chain.
+  if (await hasTable("compound_cis") && (await hasColumn("compound_outwards", "cis_id"))) {
+    await client.query(`
+      UPDATE compound_outwards o
+      SET inward_id = c.inward_id
+      FROM compound_cis c
+      WHERE o.inward_id IS NULL AND o.cis_id = c.id;
+    `);
+    await client.query(`
+      UPDATE compound_returns r
+      SET inward_id = o.inward_id
+      FROM compound_outwards o
+      WHERE r.inward_id IS NULL AND r.outward_id = o.id AND o.inward_id IS NOT NULL;
+    `);
+    await client.query(`
+      UPDATE compound_returns r
+      SET inward_id = c.inward_id
+      FROM compound_cis c
+      WHERE r.inward_id IS NULL AND r.cis_id = c.id;
+    `);
+  }
+
+  // Attach the foreign keys only once every legacy row is populated.
+  await client.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'compound_outwards_inward_id_fkey'
+      ) THEN
+        ALTER TABLE compound_outwards
+          ADD CONSTRAINT compound_outwards_inward_id_fkey
+          FOREIGN KEY (inward_id) REFERENCES compound_inwards(id) ON DELETE CASCADE;
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'compound_returns_inward_id_fkey'
+      ) THEN
+        ALTER TABLE compound_returns
+          ADD CONSTRAINT compound_returns_inward_id_fkey
+          FOREIGN KEY (inward_id) REFERENCES compound_inwards(id) ON DELETE SET NULL;
+      END IF;
+    END $$;
+  `);
+
+  if (await hasColumn("compound_outwards", "cis_id")) {
+    await client.query(`ALTER TABLE compound_outwards DROP COLUMN cis_id`);
+  }
+  if (await hasColumn("compound_returns", "cis_id")) {
+    await client.query(`ALTER TABLE compound_returns DROP COLUMN cis_id`);
+  }
+  if (await hasTable("compound_cis")) {
+    await client.query(`DROP TABLE IF EXISTS compound_cis`);
+  }
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_compound_outwards_inward_id ON compound_outwards(inward_id)`);
+  console.log("[db] Compound CIS removed; outwards now link directly to inwards");
 }

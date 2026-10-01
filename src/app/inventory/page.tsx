@@ -80,7 +80,7 @@ function InventoryDetailModal({
             </h3>
             <div className="space-y-2">
               {[
-                { icon: TrendingUp, color: "blue", label: "Weighed (OK / Overweight)", sub: "Material weighed", val: item.weighedQuantity, effect: "+ Added" },
+                { icon: TrendingUp, color: "blue", label: "Weighed (Status: OK)", sub: "Material weighed within range", val: item.weighedQuantity, effect: "+ Added" },
                 { icon: Boxes, color: "indigo", label: "Total Inwards", sub: "Material received", val: item.totalInwards, effect: "+ Added" },
                 { icon: TrendingDown, color: "emerald", label: "Total Outwards", sub: "Material dispatched", val: item.totalOutwards, effect: "- Deducted" },
                 { icon: RotateCcw, color: "rose", label: "Total Returns", sub: "Material returned", val: item.totalReturns, effect: "+ Added" },
@@ -110,10 +110,13 @@ function InventoryDetailModal({
             <div>
               <p className="font-semibold text-blue-900">Calculation Formula</p>
               <p className="mt-1 text-sm text-blue-700">
-                Available = Weighed (OK/Overweight) + Inwards - Outwards + Returns
+                Available = Weighed (Status: OK) + Inwards - Outwards + Returns
               </p>
               <p className="mt-1 text-xs text-blue-600">
                 {item.weighedQuantity} + {item.totalInwards} - {item.totalOutwards} + {item.totalReturns} = {item.avlQuantity} pcs
+              </p>
+              <p className="mt-2 text-xs text-blue-600">
+                Overweight and underweight weighings are recorded for audit only and never added to inventory.
               </p>
             </div>
           </div>
@@ -380,7 +383,7 @@ export default function InventoryPage() {
                 </tbody>
               </table>
               <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-400">
-                Avl Quantity = Weighed (OK/Overweight) + Inwards - Outwards + Returns. Updates in real-time. Click a row to view details.
+                Avl Quantity = Weighed (Status: OK) + Inwards - Outwards + Returns. Overweight/underweight weighings are not added. Updates in real-time. Click a row to view details.
               </div>
             </div>
           )}

@@ -12,6 +12,7 @@ import {
   Scale,
   Boxes,
   ChevronDown,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -40,13 +41,18 @@ const navItems = [
     label: "History",
     icon: History,
   },
+  {
+    href: "/reports",
+    label: "Reports",
+    icon: BarChart3,
+  },
 ];
 
 const compoundItems = [
   { href: "/compound-inventory", label: "Dashboard" },
   { href: "/compound-inventory/inward", label: "Inward" },
-  { href: "/compound-inventory/cis", label: "CIS" },
   { href: "/compound-inventory/outward", label: "Outward" },
+  { href: "/compound-inventory/movement", label: "Movement Tracker" },
   { href: "/compound-inventory/returns", label: "Returns" },
 ];
 
@@ -79,7 +85,7 @@ export default function Sidebar() {
           </div>
         </div>
         <p className="text-xs text-blue-200 mt-3 leading-snug">
-          United Rubber
+          United Rubber Industries (I) Pvt. Ltd.
           <br />
           <span className="text-amber-400 font-medium">Unit 1</span>
         </p>
@@ -162,7 +168,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="px-6 py-4 border-t border-white/10">
         <p className="text-xs text-blue-300">
-          © {new Date().getFullYear()} United Rubber
+          © {new Date().getFullYear()} United Rubber Industries (I) Pvt. Ltd.
           <br />
           All rights reserved
         </p>

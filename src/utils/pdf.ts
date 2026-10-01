@@ -11,6 +11,7 @@
  */
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { COMPANY_NAME } from "./label";
 
 export interface LabelPayload {
   partNumber: string;
@@ -64,12 +65,12 @@ export async function writeLabelPDF(payload: LabelPayload): Promise<Buffer> {
     .strokeColor("#0f172a")
     .stroke();
 
-  // ── Header band: "UNITED RUBBER" centered above a thick rule ──
+  // ── Header band: full company name centred above a thick rule ──
   doc
-    .fontSize(16)
+    .fontSize(13)
     .font("Helvetica-Bold")
     .fillColor("#0f172a")
-    .text("UNITED RUBBER", 24, 18, { width: pageW - 48, align: "center" });
+    .text(COMPANY_NAME, 24, 20, { width: pageW - 48, align: "center" });
   doc
     .moveTo(20, 42)
     .lineTo(pageW - 20, 42)
@@ -217,7 +218,7 @@ export async function writeRecordPDF(payload: RecordPayload): Promise<Buffer> {
     .fillColor("#fbbf24")
     .fontSize(20)
     .font("Helvetica-Bold")
-    .text("UNITED RUBBER — Weighing Record", 50, 18);
+    .text("UNITED RUBBER INDUSTRIES (I) PVT. LTD. — Weighing Record", 50, 18);
   doc
     .fillColor("#ffffff")
     .fontSize(10)

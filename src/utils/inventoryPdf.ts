@@ -197,7 +197,7 @@ export async function generateInventoryPDF(data: InventoryPDFData): Promise<Buff
       // Transaction rows
       const rowHeight = 36;
       const transactions = [
-        { label: "Weighed (OK / Overweight)", qty: data.weighedQuantity, effect: "+ Added", color: "#3b82f6" },
+        { label: "Weighed (Status: OK)", qty: data.weighedQuantity, effect: "+ Added", color: "#3b82f6" },
         { label: "Inwards (Received)", qty: data.totalInwards, effect: "+ Added", color: "#3b82f6" },
         { label: "Outwards (Dispatched)", qty: data.totalOutwards, effect: "- Deducted", color: "#ef4444" },
         { label: "Returns (Added Back)", qty: data.totalReturns, effect: "+ Added", color: "#10b981" },
@@ -274,7 +274,7 @@ export async function generateInventoryPDF(data: InventoryPDFData): Promise<Buff
         .fontSize(10)
         .font("Helvetica-Oblique");
       doc.text(
-        "Available = Weighed (OK/Overweight) + Inwards - Outwards + Returns",
+        "Available = Weighed (Status: OK) + Inwards - Outwards + Returns",
         leftMargin + 110, yPos + 2, { lineBreak: false }
       );
 
@@ -285,6 +285,13 @@ export async function generateInventoryPDF(data: InventoryPDFData): Promise<Buff
         .font("Helvetica");
       const calcStr = `${data.weighedQuantity.toLocaleString()} + ${data.totalInwards.toLocaleString()} - ${data.totalOutwards.toLocaleString()} + ${data.totalReturns.toLocaleString()} = ${data.avlQuantity.toLocaleString()} pcs`;
       doc.text(calcStr, leftMargin + 50, yPos, { lineBreak: false });
+
+      // Validation note
+      yPos += 16;
+      doc.fillColor("#94a3b8")
+        .fontSize(8)
+        .font("Helvetica-Oblique");
+      doc.text("Only weighings with status OK are added to inventory. Overweight / underweight transactions are recorded for audit only.", leftMargin + 50, yPos, { lineBreak: false });
 
       doc.end();
     } catch (error) {

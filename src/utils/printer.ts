@@ -1,5 +1,5 @@
 import * as net from "net";
-import { buildLabel, LABEL, type LabelData } from "./label";
+import { buildLabel, LABEL, COMPANY_NAME, type LabelData } from "./label";
 
 /**
  * Sends raw TSPL (Thermal Smart Printer Language) strings to a TSC label
@@ -74,6 +74,10 @@ const LABEL_HEIGHT_DOTS = LABEL_HEIGHT_MM * 8; // 400
 export function generateGunnyBagTSPL(data: GunnyBagLabelData): string {
   const artwork = buildLabel(data);
 
+  // Company heading is centred inside the label border: font 2 renders 12
+  // dots per character, so x = (800 - len * 12) / 2 keeps it on one line.
+  const headingX = Math.floor((LABEL.width - COMPANY_NAME.length * LABEL.textCharWidth) / 2);
+
   const lines = [
     `SIZE ${LABEL.widthMm} mm, ${LABEL.heightMm} mm`,
     "GAP 3 mm, 0 mm",
@@ -81,7 +85,7 @@ export function generateGunnyBagTSPL(data: GunnyBagLabelData): string {
     "REFERENCE 0,0",
     "CLS",
     `BOX ${LABEL.borderLeft},12,${LABEL.borderRight},388,2`,
-    `TEXT ${(LABEL.width - "UNITED RUBBER INDUSTRIES".length * LABEL.textCharWidth) / 2},42,"${LABEL.textFont}",0,1,1,"UNITED RUBBER INDUSTRIES"`,
+    `TEXT ${headingX},42,"${LABEL.textFont}",0,1,1,"${COMPANY_NAME}"`,
     "BAR 26,82,748,2",
     "BAR 260,82,2,306",
     ...artwork.squares.map(({ x, y, size }) => `BAR ${x},${y},${size},${size}`),
